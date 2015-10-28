@@ -4,6 +4,8 @@
 
 #include <math.h>
 
+// just for test
+
 s_app_t::s_app_t()
 {
 	m_msg = s_message_t::get_inst();
@@ -86,7 +88,7 @@ int s_app_t::eye_position(int x,int y, int r)
 
 int s_app_t::door_location(int x,int y)
 {
-	return m_eye->msg_door_postion(x,y);
+	return m_eye->msg_door_location(x,y);
 }
 
 int s_app_t::run_keyboard()

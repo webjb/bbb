@@ -12,7 +12,8 @@ s_app_t::s_app_t()
 	m_eye = s_eye_t::get_inst();
 	m_arm = s_arm_t::get_inst();
 	m_soccer_player = s_soccer_player_t::get_inst();
-		
+	m_moving_player = s_moving_player_t::get_inst();
+	
     CREATE_THREAD(m_keyboard_thread, thread_keyboard_entry, 0x8000, this, 1);         // Reserve 32KB stack
 
 	m_last_ms = 0;
@@ -57,6 +58,27 @@ int s_app_t::stop()
 	s_object_t::stop();
 
 	m_soccer_player->stop();
+	return 0;
+}
+
+int s_app_t::start_moving_player()
+{
+	if( is_started() )
+		return 0;
+	s_object_t::start();
+	m_moving_player->start();
+
+	m_run_state = 0;
+	return 0;
+}
+
+int s_app_t::stop_moving_player()
+{
+	if( !is_started() )
+		return 0;
+	s_object_t::stop();
+
+	m_moving_player->stop();
 	return 0;
 }
 

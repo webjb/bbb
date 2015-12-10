@@ -72,33 +72,57 @@ int s_moving_player_t::kick_ball()
 
 int s_moving_player_t::run()
 {
+	s_ball_postion_t pos;
+	int x_speed = -1;
+//	int y_speed = -1;
+	int x_pos = -1;
+//	int y_pos = -1;
+	int64 last_time;
 	while(!this->m_quit)
 	{
 		if( m_exit == 1)
 			break;
-	 	switch( m_run_state )
+		if( m_run_state == S_RUN_STATE_EYE_SEARCH_BALL)
 		{
-			case S_RUN_STATE_EYE_SEARCH_BALL:
+			m_eye->get_ball_position( &pos );
+			if( FOUND_BALL(pos.m_x, pos.m_y) )
+			{
+				last_time = s_timer_t::get_inst()->get_ms();
+				if( x_pos == -1 )
 				{
-					s_ball_postion_t pos;
-					m_eye->get_ball_position( &pos );
-					if( FOUND_BALL(pos.m_x, pos.m_y) )
+					x_pos = pos.m_x;
+//					y_pos = pos.m_y;
+				}
+				else
+				{
+					int delt_time = 1;
+					delt_time = (int) (s_timer_t::get_inst()->get_ms() - last_time);
+					
+					x_speed = (pos.m_x - x_pos)*1000/delt_time;
+//					y_speed = (pos.m_y - y_pos)*1000/delt_time;
+
+					delt_time = abs(pos.m_x) / x_speed;
+					if( delt_time < 2000 )
 					{
-						PRINT_INFO("found ball, eye return back\n");
-						m_run_state = S_RUN_STATE_ARM_KICK;
-					}					
+						// kick the ball
+						m_arm->kick(10);
+					}
+					m_run_state = S_RUN_STATE_ARM_KICK;
 				}
-				break;
-				
-			case S_RUN_STATE_ARM_KICK:
-				if( m_arm->is_command_all_done() )
-				{
-					PRINT_INFO("kick is done\n");
-					m_run_state = S_RUN_STATE_NOTHING;
-				}
-				break;
-				
-	 	}
+			}
+		}
+		
+		if( m_run_state == S_RUN_STATE_ARM_KICK)
+		{
+			if( s_timer_t::get_inst()->get_ms() - last_time > 4000)
+			{
+				m_run_state = S_RUN_STATE_EYE_SEARCH_BALL;
+				x_speed = -1;
+				//y_speed = -1;
+				x_pos = -1;
+//				y_pos = -1; 			
+			}
+		}
 		usleep(1000*20);
 	}
 	return 0;

@@ -19,7 +19,6 @@ OBJDUMP	= $(CROSS_COMPILE)objdump
 
 LIBS = $(LIBBASE) $(LIBHOST) $(LIBBASE) 
 
-#ttttt
 
 INC_FILE=$(wildcard ./*.h)
 

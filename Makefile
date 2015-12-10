@@ -4,7 +4,7 @@ OUT=-o $(OUT_FILE)
 
 TARGET_HOST = arm
 
-export CROSS_COMPILE = arm-linux-gnueabi-
+export CROSS_COMPILE = arm-linux-gnueabihf-
 
 AS	= $(CROSS_COMPILE)as
 LD	= $(CROSS_COMPILE)ld
@@ -19,6 +19,7 @@ OBJDUMP	= $(CROSS_COMPILE)objdump
 
 LIBS = $(LIBBASE) $(LIBHOST) $(LIBBASE) 
 
+#ttttt
 
 INC_FILE=$(wildcard ./*.h)
 

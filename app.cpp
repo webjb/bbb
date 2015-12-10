@@ -4,8 +4,6 @@
 
 #include <math.h>
 
-// just for test
-
 s_app_t::s_app_t()
 {
 	m_msg = s_message_t::get_inst();

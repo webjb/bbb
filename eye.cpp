@@ -388,7 +388,7 @@ int s_eye_t::msg_door_location(int x,int y)
 {
 	m_door.m_x = x;
 	m_door.m_y = y;
-	m_door.m_r = 0;
+	m_door.m_width = 0;
 	
 	return 0;
 }

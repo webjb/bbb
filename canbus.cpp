@@ -2,6 +2,8 @@
 
 #include "canbus.h"
 
+#define DEBUG_ENABLE 0
+
 s_can_t::s_can_t()
 {
 	m_socket = -1;
@@ -168,7 +170,9 @@ int s_can_t::send(J1939_MESSAGE * msg)
 	}
 	else
 	{
+#if DEBUG_ENABLE	
 		PRINT_INFO("send OK\n");
+#endif
 	}
 
 #if 0	
@@ -236,8 +240,9 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 		}
 		if (frame.can_id & CAN_RTR_FLAG)
 			n += snprintf(buf + n, BUF_SIZ - n, "remote request");
-
+#if DEBUG_ENABLE
 		printf("recv: cnt:%d %s ---n", nbytes, buf);
+#endif
 		n = 0;
 		
 		len = sizeof(canid_t);
@@ -245,9 +250,13 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 		for(int j=0;j<len;j++)
 		{
 			msg->Array[j] = buf[len-j-1];
+#if DEBUG_ENABLE			
 			printf("%x ", msg->Array[j]);
+#endif
 		}
+#if DEBUG_ENABLE		
 		printf("\n");
+#endif
 		memcpy(msg->Msg.Data, frame.data, frame.can_dlc);
 	}
 

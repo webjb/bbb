@@ -125,7 +125,7 @@ int s_eye_t::add_command(int servo_id, int timer_ms, int pos, int speed)
 	int64 time_ms;
 
 	time_ms = s_timer_t::get_inst()->get_ms();
-	PRINT_INFO("%s time:%lld pos:%d speed:%d\n", TIME_STAMP(), time_ms, pos, speed);
+	PRINT_INFO("%s eye %d time:%lld pos:%d speed:%d\n", TIME_STAMP(), servo_id, time_ms, pos, speed);
 	
 	memset(&cmd, 0, sizeof(s_eye_command_t));
 	cmd.m_start_time_ms = time_ms + timer_ms;
@@ -222,7 +222,10 @@ int s_eye_t::search(int speed)
 	int step;
 	int count;
 	time = 0;
-	count = 10;
+	count = 20;
+	PRINT_INFO("eye search ...\n");
+	LOCK_MUTEX(m_mutex);
+	
 	add_command(1, time, 30, 100);
 	time += 1000;
 	add_command(0, time, EYE_POS_LEFT_RIGHT_MIN, 100);
@@ -231,8 +234,35 @@ int s_eye_t::search(int speed)
 	for( i=0;i<count;i++)
 	{
 		add_command(0, time, EYE_POS_LEFT_RIGHT_MIN + step * i, 20);
-		time += 200;
+		time += 400;
 	}
+	UNLOCK_MUTEX(m_mutex);
+	
+	return 0;
+}
+
+
+int s_eye_t::search_door(int speed)
+{
+	int time;
+	int i;
+	int step;
+	int count;
+	time = 0;
+	count = 40;
+	LOCK_MUTEX(m_mutex);
+	
+	add_command(1, time, 30, 100);
+	time += 1000;
+	add_command(0, time, EYE_POS_LEFT_RIGHT_MIN, 100);
+	time += 2000;
+	step = (EYE_POS_LEFT_RIGHT_MAX - EYE_POS_LEFT_RIGHT_MIN) / count;
+	for( i=0;i<count;i++)
+	{
+		add_command(0, time, EYE_POS_LEFT_RIGHT_MIN + step * i, 20);
+		time += 500;
+	}
+	UNLOCK_MUTEX(m_mutex);
 	
 	return 0;
 }
@@ -246,7 +276,10 @@ int s_eye_t::stop_search()
 		if( m_servo[i] )
 			m_servo[i]->stop_move();
 	}
+	LOCK_MUTEX(m_mutex);	
 	m_cmd_list.clear();
+	UNLOCK_MUTEX(m_mutex);
+	
 	return 0;
 }
 
@@ -274,28 +307,49 @@ int s_eye_t::get_pos(int * alpha1, int * alpha2)
 	return 0;
 }
 
+int s_eye_t::get_moved_xy(int * x,int * y)
+{
+	int servo_1;
+	int servo_2;
+
+	servo_1 = m_servo[0]->get_pos();
+	servo_2 = m_servo[1]->get_pos();
+
+	*x = (90-servo_1)*2;
+	*y = (90-servo_2)*2;
+
+	return 0;	
+}
+
 int s_eye_t::go_pos_0(int speed)
 {
 	PRINT_INFO("EYE go pos 0\n");
+	LOCK_MUTEX(m_mutex);
+	
 	add_command(0, 0000, 45, 10);
 	add_command(1, 0000, 45, 10);
 	add_null_command(1, 3000);
+	UNLOCK_MUTEX(m_mutex);
 	return 0;
 }
 
 int s_eye_t::go_pos_1(int speed)
 {
 	PRINT_INFO("EYE go pos 1\n");
+	LOCK_MUTEX(m_mutex);
 	add_command(0, 0000, 45, 10);
 	add_command(1, 0000, 30, 10);
 	add_null_command(1, 3000);
+	UNLOCK_MUTEX(m_mutex);
 	return 0;
 }
 
 int s_eye_t::up(int speed)
 {
 	PRINT_INFO("EYE up %d\n", speed);
+	LOCK_MUTEX(m_mutex);
 	add_command(1, 4000, 20, speed);
+	UNLOCK_MUTEX(m_mutex);
 	
 	return 0;
 }
@@ -303,7 +357,9 @@ int s_eye_t::up(int speed)
 int s_eye_t::down(int speed)
 {
 	PRINT_INFO("EYE down %d\n", speed);
+	LOCK_MUTEX(m_mutex);
 	add_command(1, 3000, 100, speed);
+	UNLOCK_MUTEX(m_mutex);
 	return 0;
 }
 
@@ -364,13 +420,19 @@ int s_eye_t::start()
 int s_eye_t::stop()
 {
 	int i;
+	PRINT_INFO("eye stop\n");
 	for( i=0; i<EYE_MAX_SERVOS; i++)
 	{
 		if( m_servo[i] )
+		{
+			PRINT_INFO("eye stop %d\n", i);
 			m_servo[i]->stop();
+		}
 	}
 	s_object_t::stop();
+	LOCK_MUTEX(m_mutex);
 	m_cmd_list.clear();
+	UNLOCK_MUTEX(m_mutex);
 	
 	return 0;
 }
@@ -395,6 +457,16 @@ int s_eye_t::msg_door_location(int x,int y)
 
 int s_eye_t::get_door_position(s_door_position_t * pos)
 {
+	if( (m_door.m_x < 0) || ( m_door.m_y < 0 ) || (m_door.m_x == 0 && m_door.m_y == 0) )
+	{
+		pos->m_width = 0;
+	}
+	else
+	{
+		pos->m_width = 1;
+		convert_xy(m_door.m_x, m_door.m_y, &pos->m_x, &pos->m_y);
+	}
+		
 	return 0;
 }
 
@@ -490,7 +562,7 @@ int s_eye_t::is_command_all_done()
 
 int s_eye_t::do_command(s_eye_command_t cmd)
 {
-	PRINT_INFO("\n%s do_command\n", TIME_STAMP());
+	PRINT_INFO("\n%s Eye do_command\n", TIME_STAMP());
 	switch(cmd.m_command)
 	{
 		case S_CMD_MOVE_TO:		
@@ -511,7 +583,7 @@ int s_eye_t::run()
 		{				
 			goto __eye_loop;
 		}
-
+		LOCK_MUTEX(m_mutex);
 		for(it = m_cmd_list.begin(); it != m_cmd_list.end(); it ++)
 		{
 			if( is_event_reached(*it) ) 
@@ -521,6 +593,7 @@ int s_eye_t::run()
 				break;
 			}
 		}
+		UNLOCK_MUTEX(m_mutex);
 		usleep(1000*20);
 		continue;
 __eye_loop:

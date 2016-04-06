@@ -8,8 +8,8 @@
 #include "eye.h"
 #include "wheel.h"
 #include "soccerPlayer.h"
-#include "movingPlayer.h"
 #include "message.h"
+#include "msgPlayer.h"
 
 int get_angle(int x, int y, int * angle, int * distance);
 
@@ -45,9 +45,6 @@ public:
     static s_app_t* get_app();
     virtual int start();
     virtual int stop();
-
-    int start_moving_player();
-    int stop_moving_player();
     virtual int run();
 public:
     int arm_kick();
@@ -72,7 +69,8 @@ private:
     s_arm_t * m_arm;
     s_eye_t * m_eye;
 	s_soccer_player_t * m_soccer_player;
-    s_moving_player_t * m_moving_player;
+
+	s_massage_player_t * m_msg_player;
 	
     thread_t m_keyboard_thread;
 

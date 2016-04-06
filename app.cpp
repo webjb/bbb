@@ -11,9 +11,10 @@ s_app_t::s_app_t()
 	m_wheel = s_wheel_t::get_inst();
 	m_eye = s_eye_t::get_inst();
 	m_arm = s_arm_t::get_inst();
-	m_soccer_player = s_soccer_player_t::get_inst();
-	m_moving_player = s_moving_player_t::get_inst();
+	m_msg_player = s_massage_player_t::get_inst();
 	
+	m_soccer_player = s_soccer_player_t::get_inst();
+		
     CREATE_THREAD(m_keyboard_thread, thread_keyboard_entry, 0x8000, this, 1);         // Reserve 32KB stack
 
 	m_last_ms = 0;
@@ -53,32 +54,12 @@ int s_app_t::start()
 
 int s_app_t::stop()
 {
+	PRINT_INFO("app stop\n");
 	if( !is_started() )
 		return 0;
 	s_object_t::stop();
 
 	m_soccer_player->stop();
-	return 0;
-}
-
-int s_app_t::start_moving_player()
-{
-	if( is_started() )
-		return 0;
-	s_object_t::start();
-	m_moving_player->start();
-
-	m_run_state = 0;
-	return 0;
-}
-
-int s_app_t::stop_moving_player()
-{
-	if( !is_started() )
-		return 0;
-	s_object_t::stop();
-
-	m_moving_player->stop();
 	return 0;
 }
 
@@ -133,7 +114,10 @@ int s_app_t::run_keyboard()
 				m_arm->poweroff();
 				break;
 			case '1':
-				m_arm->right_low(speed);
+//				m_arm->right_low(speed);
+				m_eye->start();
+				m_eye->standby(10);
+
 				break;
 			case '2':
 				m_arm->standby(speed);
@@ -161,9 +145,15 @@ int s_app_t::run_keyboard()
 					wheel_speed = 10;
 				break;
 			case 'l':				
-				m_wheel->turn_left(wheel_speed);
+				m_wheel->turn_left_2way(wheel_speed);
 				break;
 			case 'r':
+				m_wheel->turn_right_2way(wheel_speed);
+				break;
+			case 'L':				
+				m_wheel->turn_left(wheel_speed);
+				break;
+			case 'R':
 				m_wheel->turn_right(wheel_speed);
 				break;
 			case 's':
@@ -183,7 +173,12 @@ int s_app_t::run_keyboard()
 			case 'E':
 				m_eye->search(speed);
 				break;
+			case 'm':
+				m_msg_player->start();
+				break;
 			case 'q':				
+				m_eye->stop();
+				m_msg_player->stop();
 				break;				
 		}
 		if( ch == 'q')
@@ -224,6 +219,7 @@ int s_app_t::run()
 	PRINT_INFO("s_app_t::run EXIT quit:%d\n", this->m_quit);
 	if( m_exit == 1 )
 	{
+		m_eye->stop();
 		stop();
 		m_exit = 2;
 	}

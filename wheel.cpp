@@ -9,6 +9,11 @@ enum
 	S_RUN_STATE_WH_MOVING,
 	S_RUN_STATE_WH_REACHED,
 	S_RUN_STATE_WH_STOP,
+
+	S_RUN_STATE_WH_AIMING_DOOR,
+	S_RUN_STATE_WH_DOOR_AIMED,
+
+	S_RUN_STATE_WH_LOST_BALL,
 };
 
 
@@ -19,6 +24,10 @@ s_wheel_t::s_wheel_t()
 	m_move_state = 0;
 	m_eye = s_eye_t::get_inst();
 	m_run_state = S_RUN_STATE_WH_NOTHING;
+
+	m_wh_state = S_WH_STATE_NOTHING;
+
+	m_func_state = S_FUNC_STATE_NOTHING;
 }
 
 s_wheel_t::~s_wheel_t()
@@ -46,7 +55,11 @@ int s_wheel_t::start()
 
 int s_wheel_t::stop()
 {
+	PRINT_INFO("wheel stop\n");
+	m_j1939->set_wheels(0, 0);	
+	
 	s_object_t::stop();
+	
 	m_j1939->stop();
 	
 	return 0;
@@ -74,6 +87,32 @@ int s_wheel_t::turn_right(int speed)
 	return 0;
 }
 
+
+int s_wheel_t::turn_left_2way(int speed)
+{
+	PRINT_INFO("wheel:left_2way\n");
+	LOCK_MUTEX(m_mutex);
+//	m_j1939->set_wheels(speed,0);//-speed);
+	m_j1939->set_wheels(speed-100,100-speed);
+	m_move_state = S_MOVE_STATE_LEFT;
+	m_last_cmd_time = GET_MS();
+	UNLOCK_MUTEX(m_mutex);
+	return 0;
+}
+
+int s_wheel_t::turn_right_2way(int speed)
+{
+	PRINT_INFO("wheel:right_2way\n");
+	LOCK_MUTEX(m_mutex);
+//	m_j1939->set_wheels(0, speed);//-speed,speed);
+	m_j1939->set_wheels(100-speed,speed-100);
+	m_move_state = S_MOVE_STATE_RIGHT;
+	m_last_cmd_time = GET_MS();
+	UNLOCK_MUTEX(m_mutex);
+	return 0;
+}
+
+
 int s_wheel_t::move_forward(int speed)
 {
 	PRINT_INFO("wheel::forward\n");
@@ -98,13 +137,13 @@ int s_wheel_t::move_backward(int speed)
 
 int s_wheel_t::move_stop()
 {
-	PRINT_INFO("wheel:move_stop\n");
 	LOCK_MUTEX(m_mutex);
 	if( m_move_state != S_MOVE_STATE_STOP )
 	{
+		PRINT_INFO("wheel:move_stop\n");
 		m_j1939->set_wheels(0, 0);
-		m_last_cmd_time = GET_MS();
 		m_move_state = S_MOVE_STATE_STOP;
+		m_last_cmd_time = GET_MS();
 	}
 	UNLOCK_MUTEX(m_mutex);
 	return 0;
@@ -131,23 +170,23 @@ int s_wheel_t::is_position_lost()
 	return 0;
 }
 
-int s_wheel_t::start_search()
+int s_wheel_t::start_search(int x)
 {
-	int alpha;
-	s_ball_postion_t pos;
+//	int alpha;
+//	s_ball_postion_t pos;
 	
-	m_eye->get_ball_position(&pos);
-	alpha = pos.m_alpha;
+//	m_eye->get_ball_position(&pos);
+//	alpha = pos.m_alpha;
 
-	PRINT_INFO("WHEEL_START_SEARCH alpha1:%d\n", alpha);
+	PRINT_INFO("WHEEL_START_SEARCH alpha1:%d\n", x);
 	m_run_state = S_RUN_STATE_WH_SEARCHING;	
 	
-	if( LINE_BALL(alpha) )
+	if( LINE_BALL(x) )
 	{
 		return 0;
 	}
-	
-	if( alpha < 90 )
+
+	if( x < 90 )
 	{
 		turn_right(10);
 	}
@@ -155,6 +194,8 @@ int s_wheel_t::start_search()
 	{
 		turn_left(10);
 	}
+
+	m_func_state = S_FUNC_STATE_SEARCH_BALL;
 	return 0;
 }
 
@@ -168,9 +209,9 @@ int s_wheel_t::stop_search()
 int s_wheel_t::start_move()
 {
 	PRINT_INFO("wheel::start_move\n");
-	m_run_state = S_RUN_STATE_WH_MOVING;
-	
+	m_run_state = S_RUN_STATE_WH_MOVING;	
 	m_move_state = S_MOVE_STATE_NOTHING;
+	m_func_state = S_FUNC_STATE_MOVE_TO_BALL;
 	return 0;
 }
 
@@ -182,9 +223,34 @@ int s_wheel_t::stop_move()
 	m_alpha = 0;
 	m_z = 0;
 	m_last_pos_time = 0L;
+	m_move_state = S_FUNC_STATE_NOTHING;
 	
 	return 0;
 }
+
+
+int s_wheel_t::start_aim_door()
+{
+	PRINT_INFO("wheel::start_aim_door\n");
+	m_run_state = S_RUN_STATE_WH_AIMING_DOOR;
+	m_wh_state = S_WH_STATE_NOTHING;
+	m_move_state = S_MOVE_STATE_NOTHING;
+	m_func_state = S_FUNC_STATE_AIM_DOOR;
+	return 0;
+}
+
+int s_wheel_t::stop_aim_door()
+{
+	PRINT_INFO("wheel::stop_aim_door\n");
+	m_run_state = S_RUN_STATE_WH_NOTHING;
+	move_stop();
+	m_alpha = 0;
+	m_z = 0;
+	m_last_pos_time = 0L;
+	m_func_state = S_FUNC_STATE_NOTHING;
+	return 0;
+}
+
 
 int s_wheel_t::is_ball_found()
 {
@@ -196,139 +262,348 @@ int s_wheel_t::is_ball_reached()
 	return (m_run_state == S_RUN_STATE_WH_REACHED);
 }
 
-int s_wheel_t::run()
+int s_wheel_t::is_door_aimed()
 {
-	PRINT_INFO("E s_wheel_t::run()\n");
+	return (m_run_state == S_RUN_STATE_WH_DOOR_AIMED);
+}
+
+int s_wheel_t::is_ball_lost()
+{
+	return (m_run_state == S_RUN_STATE_WH_LOST_BALL);
+}
+
+int s_wheel_t::do_search()
+{
 	int alpha;
 	int z;
-	int64 time_ms;
+//	int64 time_ms;
 	
-	m_last_cmd_time = s_timer_t::get_inst()->get_ms();
-	while(!m_quit)
+	s_ball_postion_t	pos;
+	s_eye_t * eye = s_eye_t::get_inst();
+	eye->get_ball_position(&pos);
+	alpha = pos.m_alpha;
+	z = pos.m_distance;
+	
+//	time_ms = GET_MS();
+	if( z < 0 )
+	{	
+#if 0
+		move_stop();
+		if( time_ms > m_last_cmd_time + 4000)
+		{
+			m_wh_state = S_WH_STATE_NOTHING;
+			m_run_state = S_RUN_STATE_WH_LOST_BALL;
+			m_move_state = S_MOVE_STATE_NOTHING;
+		}
+#endif	
+		return 0;
+	}
+	m_last_z = z;
+	if( m_move_state == S_MOVE_STATE_STOP )
 	{
-#if 0	
-		LOCK_MUTEX(m_mutex);
-		alpha = m_alpha;
-		z = m_z;
-		UNLOCK_MUTEX(m_mutex);
-#endif
-		s_ball_postion_t	pos;
-		s_eye_t * eye = s_eye_t::get_inst();
-		eye->get_ball_position(&pos);
-		alpha = pos.m_alpha;
-		z = pos.m_distance;
-		
-		time_ms = GET_MS();
+	}
+	if( alpha <110 && alpha > 70)
+	{
+		PRINT_INFO("%s WHEEL found ball start move alpha:%d...\n", TIME_STAMP(),  alpha);
+		move_stop();
+		m_run_state = S_RUN_STATE_WH_SEARCHED;
+	}
+	
+	return 0;
+}
 
-		if( m_run_state == S_RUN_STATE_WH_SEARCHING)
-		{
-			if( (z > 0) && (alpha > 0) )
-			{
-				PRINT_INFO("WHEEL found ball start move...\n");
-				move_stop();
-				m_run_state = S_RUN_STATE_WH_SEARCHED;
-			}
-		}		
-		else if ( m_run_state == S_RUN_STATE_WH_MOVING )
-		{
-			if( (alpha < KICK_MAX_ANGLE && alpha > KICK_MIN_ANGLE ) &&	(z <= KICK_DISTANCE && z > 1 ) )
-			{
-				move_stop();
-				m_move_state = S_MOVE_STATE_STOP;
-				m_run_state = S_RUN_STATE_WH_REACHED;
-				goto _end;
-			}
-			switch( m_move_state )
-			{
-				case S_MOVE_STATE_STOP:
-					break;
-				case S_MOVE_STATE_FORWARD:
-				case S_MOVE_STATE_BACKWARD:
-					if( time_ms > m_last_cmd_time + 1000 ) // 3 seconds
-					{
-						PRINT_INFO("run state from %d to rest\n", m_run_state);
-						move_stop();
-						m_move_state = S_MOVE_STATE_REST;
-						m_last_cmd_time = time_ms;
-					}
-					break;
-					
-				case S_MOVE_STATE_LEFT:
-				case S_MOVE_STATE_RIGHT:
-					if( time_ms > m_last_cmd_time + 1000 ) // 
-					{
-						PRINT_INFO("run state from %d to rest\n", m_run_state);
-						move_stop();
-						m_move_state = S_MOVE_STATE_REST;
-						m_last_cmd_time = time_ms;
-					}
-					break;
-				case S_MOVE_STATE_REST:
-					if( time_ms > m_last_cmd_time + 1600 ) // 
-					{
-						PRINT_INFO("run state from %d to nothing\n", m_run_state);
-						m_move_state = S_MOVE_STATE_NOTHING;
-						m_last_cmd_time = time_ms;
-					}
-					break;
-				default:
-					break;
-			}
-		
-			if( m_move_state != S_MOVE_STATE_NOTHING)
-				goto _end;
+int s_wheel_t::do_move_to_ball()
+{
+	int64 time_ms;
+	int alpha;
+	int z;
+	s_ball_postion_t	pos;
+	s_eye_t * eye = s_eye_t::get_inst();
+	int speed;
+	int left;
+	int right;
+	float dir;
 
-//			if( is_position_lost() )
-//				goto _end;
-			if( z <= 0 )
-			{
-				PRINT_INFO("lost position...\n");
-				goto _end;
-			}
-			PRINT_INFO("z=%d alpha:%d\n", z, alpha);
+	static int g_last_alpha = 0;
+	static int g_last_z = 0;
+	
+	eye->get_ball_position(&pos);
+	alpha = pos.m_alpha;
+	z = pos.m_distance;
+	
+	time_ms = GET_MS();
+
+
+	if( g_last_alpha != alpha && g_last_z != z)
+	{
+		PRINT_INFO("%s alpha:%d z:%d\n", TIME_STAMP(), alpha, z);
+		g_last_alpha = alpha;
+		g_last_z = z;
+	}
+	if( z < 0 ) // lost ball position
+	{
+		move_stop();
+		return 0;
+	}
+	if( (alpha < KICK_MAX_ANGLE && alpha > KICK_MIN_ANGLE ) &&	(z <= KICK_DISTANCE && z > 1 ) )
+	{
+		PRINT_INFO("pos reached alpha:%d z:%d\n", alpha, z);
+		move_stop();
+		m_wh_state = S_WH_STATE_STOP;
+		if( m_func_state == S_FUNC_STATE_AIM_DOOR )
+		{
+			PRINT_INFO("again to aim to door\n");
+			m_run_state = S_RUN_STATE_WH_AIMING_DOOR;
+			m_wh_state = S_WH_STATE_NOTHING;
+			m_move_state = S_MOVE_STATE_NOTHING;			
+		}
+		else
+			m_run_state = S_RUN_STATE_WH_REACHED;
+		return 0;
+	}
+
+	if( m_wh_state == S_WH_STATE_FORWARD)
+	{
+		if( alpha > 180 )
+		{
+			PRINT_INFO("move over ball alpha:%d z:%d\n", alpha, z);
+			move_stop();
+			m_wh_state = S_WH_STATE_REST;
+			m_last_cmd_time = time_ms;
 			
-			if( z > KICK_DISTANCE )
+			return 0;
+		}
+		
+		if( z > 1400 )
+			speed = 50;
+		else if( z > 800 )
+			speed = 40;
+		else if( z > 500 )
+			speed = 30;
+		else if( z > 400 )
+			speed = 20;
+		else
+			speed = 10;
+
+
+		{
+			dir = (float)(90 - alpha);
+			dir = (dir/(90.0*2.0))*(float)speed;
+
+			if( abs(dir) > 5.0)
 			{
-				if( alpha >= 80 && alpha <= 100)
-				{
-					// move forward
-					if( z < 400 )
-						move_forward(10);
-					else if( z < 800 )
-						move_forward(20);
-					else if( z < 1400 )
-						move_forward(30);
-					else 
-						move_forward(40);
-				}
-				else if( alpha < 80  )
-				{
-					// turn right
-					turn_right(10);
-				}
-				else if( (alpha > 100) && (alpha < 180) )
-				{
-					// turn left
-					turn_left(10);
-				}
-				else 
-				{
-					move_backward(10);
-				}
+				dir = (dir>0)?5:-5;
+			}
+
+			left = speed + (int)dir;
+			right = speed - (int)dir;
+		}
+		
+		LOCK_MUTEX(m_mutex);
+		m_j1939->set_wheels(-1*left, -1*right);
+		m_move_state = S_MOVE_STATE_FORWARD;
+		m_last_cmd_time = time_ms;
+		UNLOCK_MUTEX(m_mutex);
+	}
+
+	if( m_wh_state == S_WH_STATE_REST)
+	{
+		if( time_ms > m_last_cmd_time + 1000)
+		{
+			m_wh_state = S_WH_STATE_NOTHING;
+			PRINT_INFO("reset done, nothing\n");
+			return 0;
+		}
+	}
+
+	if( m_wh_state == S_WH_STATE_NOTHING)
+	{
+		if( alpha > 180 )
+		{
+			move_backward(10);
+			m_wh_state = S_WH_STATE_BACKWARD;
+		}
+		else 
+		{
+			m_wh_state = S_WH_STATE_FORWARD;
+			return 0;
+		}
+	}
+
+	if( m_wh_state == S_WH_STATE_BACKWARD )
+	{
+		if( ( (alpha < 180) && (z > KICK_DISTANCE) ) || (time_ms > m_last_cmd_time + 5000) )
+		{
+			move_stop();
+			m_wh_state = S_WH_STATE_REST;
+			m_last_cmd_time = time_ms;
+			PRINT_INFO("reset start\n");
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+int s_wheel_t::do_aim_to_door()
+{
+	int64 time_ms;
+	s_door_position_t dpos;
+	s_eye_t * eye = s_eye_t::get_inst();
+	int alpha;
+	int z;
+	s_ball_postion_t	pos;
+
+	static int g_door_x = 0;
+	static int g_door_y = 0;
+	
+	eye->get_ball_position(&pos);
+	alpha = pos.m_alpha;
+	z = pos.m_distance;
+
+	if( z < 0 )
+	{
+//		PRINT_INFO("aim to door lost ball\n");
+//		return 0;
+	}
+	time_ms = GET_MS();
+
+	eye->get_door_position(&dpos);
+
+	if( dpos.m_width > 0 )
+	{
+		if( g_door_x != dpos.m_x && g_door_y != dpos.m_y)
+		{
+			PRINT_INFO("door_pos:%d %d\n", dpos.m_x, dpos.m_y);
+			g_door_x = dpos.m_x;
+			g_door_y = dpos.m_y;
+		}
+	
+		if( (dpos.m_x > -50 && dpos.m_x < 50) 
+			&& 	( (alpha < KICK_MAX_ANGLE && alpha > KICK_MIN_ANGLE ) &&	(z <= KICK_DISTANCE && z > 1 )))
+		{
+	
+			move_stop();
+			PRINT_INFO("door aimed\n");
+			m_run_state = S_RUN_STATE_WH_DOOR_AIMED;
+			return 0;
+		}
+	}
+	if( m_wh_state == S_WH_STATE_NOTHING)
+	{		
+		if( dpos.m_width <= 0)
+		{
+			PRINT_INFO("\naim to door lost door\n");
+			move_stop();
+			m_eye->search(10);
+			m_wh_state = S_WH_STATE_AIM_SEARCH_DOOR;
+			return 0;
+		}
+		PRINT_INFO("turn door x:%d y:%d\n", dpos.m_x, dpos.m_y);
+		if( dpos.m_x <= -50 )
+		{
+			if( m_wh_state != S_WH_STATE_AIM_LEFT)
+			{
+				turn_left_2way(10);
+				m_wh_state = S_WH_STATE_AIM_LEFT;
+			}				
+		}		
+		else if( dpos.m_x >= 50 )
+		{
+			if( m_wh_state != S_WH_STATE_AIM_RIGHT)
+			{
+				turn_right_2way(10);
+				m_wh_state = S_WH_STATE_AIM_RIGHT;
+			}				
+		}
+		else
+		{
+			m_wh_state = S_WH_STATE_NOTHING;
+			m_run_state = S_RUN_STATE_WH_MOVING;	
+			m_move_state = S_MOVE_STATE_NOTHING;
+		}
+		return 0;
+	}
+
+	if( m_wh_state == S_WH_STATE_AIM_SEARCH_DOOR )
+	{
+		if( dpos.m_width > 0 )
+		{
+			m_eye->stop_search();			
+			m_wh_state = S_WH_STATE_NOTHING;
+			return 0;
+		}
+	}
+
+	if( (m_wh_state == S_WH_STATE_AIM_LEFT) || (m_wh_state == S_WH_STATE_AIM_RIGHT) )
+	{
+		if( time_ms > m_last_cmd_time + 2000 )
+		{
+			move_stop();
+			m_wh_state = S_WH_STATE_AIM_REST_1;
+		}
+	}
+	if( m_wh_state == S_WH_STATE_AIM_REST_1)
+	{
+		if( time_ms > m_last_cmd_time + 1000 )
+		{
+			move_backward(15);
+			m_wh_state = S_WH_STATE_AIM_REST_2;
+		}		
+	}
+	if( m_wh_state == S_WH_STATE_AIM_REST_2)
+	{
+		if( time_ms > m_last_cmd_time + 2000 )
+		{
+			move_stop();
+			PRINT_INFO("drift done\n");
+			if( z < 0 )
+			{
+				m_wh_state = S_WH_STATE_NOTHING;
+				m_run_state = S_RUN_STATE_WH_LOST_BALL;
+				m_move_state = S_MOVE_STATE_NOTHING;
 			}
 			else
 			{
-				move_backward(10);
-			}
+				m_wh_state = S_WH_STATE_NOTHING;
+				m_run_state = S_RUN_STATE_WH_MOVING;	
+				m_move_state = S_MOVE_STATE_NOTHING;
+			}			
+			m_eye->go_pos_1(10);
+		}
+	}
+	return 0;
+}
+
+int s_wheel_t::run()
+{
+	PRINT_INFO("E s_wheel_t::run()\n");
+	
+	m_last_cmd_time = s_timer_t::get_inst()->get_ms();
+	while(!m_quit)
+	{		
+		if( m_run_state == S_RUN_STATE_WH_SEARCHING)
+		{
+			do_search();
+		}		
+		else if ( m_run_state == S_RUN_STATE_WH_MOVING )
+		{
+			do_move_to_ball();
 		}
 		else if( m_run_state == S_RUN_STATE_WH_REACHED )
-		{
-		
+		{		
 		}
-_end:
+		else if( m_run_state == S_RUN_STATE_WH_AIMING_DOOR)
+		{
+			do_aim_to_door();
+		}
+		else if( m_run_state == S_RUN_STATE_WH_DOOR_AIMED )
+		{
+		}
 		usleep(1000*10);
 	}
 	m_quit = 1;
+	
 	PRINT_INFO("X s_wheel_t::run()\n");
 	return 0;
 }

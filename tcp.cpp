@@ -142,7 +142,7 @@ int s_tcp_t::run_server(int socket_id)
 			}
 			
 			buffer[len] = 0;
-//	PRINT_INFO("recv: %s\n", buffer);
+			PRINT_INFO("recv: %s\n", buffer);
 		}
 	}
 	
@@ -151,7 +151,7 @@ int s_tcp_t::run_server(int socket_id)
 		PRINT_ERROR("ERROR calling close()\n");
 	}
 	delete buffer;
-	PRINT_INFO("run_server() EXIT\n");
+//	PRINT_INFO("run_server() EXIT\n");
 	return 0;
 }
 

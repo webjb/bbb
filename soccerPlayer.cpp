@@ -27,24 +27,20 @@ int s_soccer_player_t::start()
 	s_object_t::start();
 	
 	m_arm->start();
-//	m_arm->standby(10);
 	m_arm->right_low(10);
-
-	m_eye->start();
-	m_eye->standby(10);
 
 	m_wheel->start();
 
 	eye_start_search();
-	
 	return 0;
 }
 
 int s_soccer_player_t::stop()
 {
+	PRINT_INFO("soccer_player stop\n");
 	m_arm->stop();
 	m_wheel->stop();
-	m_eye->stop();
+//	m_eye->stop();
 
 	m_run_state = S_RUN_STATE_NOTHING;
 	s_object_t::stop();
@@ -53,9 +49,20 @@ int s_soccer_player_t::stop()
 
 int s_soccer_player_t::eye_start_search()
 {
+	s_ball_postion_t pos;
 	PRINT_INFO("EYE START SEARCH ...");
-	m_run_state = S_RUN_STATE_EYE_SEARCH_BALL;
-	m_eye->search(10);
+	
+	m_eye->get_ball_position( &pos );
+	if( pos.m_distance < 0 )
+	{
+		m_eye->search(10);
+		m_run_state = S_RUN_STATE_EYE_SEARCH_BALL;
+	}
+	else	
+	{
+		m_wheel->start_move();
+		m_run_state = S_RUN_STATE_WHEEL_MOVE_TO_BALL;
+	}
 	return 0;
 }
 
@@ -67,7 +74,7 @@ int s_soccer_player_t::eye_stop_search()
 	
 	return 0;
 }
-
+/*
 int s_soccer_player_t::wheel_start_search()
 {
 	PRINT_INFO("WHEEL START SEARCH ...\n");
@@ -81,7 +88,7 @@ int s_soccer_player_t::wheel_stop_search()
 	m_wheel->stop_search();
 	return 0;
 }
-
+*/
 int s_soccer_player_t::wheel_start_move()
 {
 	PRINT_INFO("WHEEL STAT MOVE\n");
@@ -120,6 +127,9 @@ int s_soccer_player_t::kick_ball()
 
 int s_soccer_player_t::run()
 {
+	int x,y;
+
+	x = 0;
 	while(!this->m_quit)
 	{
 		if( m_exit == 1)
@@ -130,22 +140,25 @@ int s_soccer_player_t::run()
 				{
 					s_ball_postion_t pos;
 					m_eye->get_ball_position( &pos );
-					if( FOUND_BALL(pos.m_x, pos.m_y) )
+					if( pos.m_distance > 0 )
 					{
 						PRINT_INFO("found ball, eye return back\n");
 						m_run_state = S_RUN_STATE_EYE_RETURN_ORIG;
-						eye_stop_search();
+						m_eye->stop_search();
+						m_eye->get_moved_xy(&x, &y);
+						m_eye->go_pos_1(10);
 					}					
 				}
 				break;
 			case S_RUN_STATE_EYE_RETURN_ORIG:
 				if( m_eye->is_command_all_done() )
 				{
+					
 					PRINT_INFO("EYE returned to original position, start wheel search \n");
-					m_wheel->start_search();
+					m_wheel->start_search(x);
 					m_run_state = S_RUN_STATE_WHEEL_TURN;
 				}
-				break;				
+				break;
 				
 			case S_RUN_STATE_EYE_SEARCH_DOOR:
 				if(0 )// FIND_DOOR() )
@@ -167,9 +180,33 @@ int s_soccer_player_t::run()
 				{
 					if( m_wheel->is_ball_reached() )
 					{
-						PRINT_INFO("ball reached, start to kick ..\n");
-						m_arm->kick(10);
-						m_run_state = S_RUN_STATE_ARM_KICK;
+						PRINT_INFO("ball reached, start to aim to door ..\n");
+//						m_arm->kick(10);
+//						m_run_state = S_RUN_STATE_ARM_KICK;
+						m_wheel->start_aim_door();
+						m_run_state = S_RUN_STATE_WHEEL_AIM_TO_DOOR;
+					}
+				}
+				break;
+			case S_RUN_STATE_WHEEL_AIM_TO_DOOR:
+				if( m_wheel->is_door_aimed())
+				{
+					m_arm->kick(10);
+					m_run_state = S_RUN_STATE_ARM_KICK;
+				}
+				else if( m_wheel->is_ball_lost() )
+				{
+					s_ball_postion_t pos;
+					PRINT_INFO("ball is lost, start over\n");
+					m_eye->get_ball_position( &pos );
+					
+					if( pos.m_distance < 0 )
+					{
+						eye_start_search();
+					}
+					else
+					{
+						m_run_state = S_RUN_STATE_EYE_SEARCH_BALL;
 					}
 				}
 				break;

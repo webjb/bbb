@@ -22,6 +22,8 @@ enum
 	S_CMD_HOST_ASK_DOOR_LOCATION,
 	S_CMD_HOST_ASK_BALL_LOCATION,
 	S_CMD_HOST_ASK_MOTION_DETECT,
+
+	S_CMD_LANE_LOCTION,
 };
 
 typedef struct s_command_header_t_

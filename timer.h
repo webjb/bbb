@@ -19,4 +19,6 @@ public:
     int64 m_sec_0;
 };
 
+#define TIME_STAMP() (s_timer_t::get_inst()->get_str().c_str())
+
 #endif

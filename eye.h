@@ -73,12 +73,13 @@ public:
 	int go_pos_1(int speed);
 
     int search(int speed);
+	int search_door(int speed);
 	int stop_search();
     int poweroff(); 
 
 	int get_pos(int * alpha1, int *alph2 );
 
-	
+	int get_moved_xy(int * x, int * y);
 	int is_command_all_done();
 	
 public:
@@ -90,8 +91,8 @@ public:
 	int zoom_in();
 	int zoom_out();
 
-	int get_ball(int & x, int & y, int & r);
-	int get_door_pos(int * x, int * y, int *width, int * height);
+//	int get_ball(int & x, int & y, int & r);
+//	int get_door_pos(int * x, int * y, int *width, int * height);
 
 private:
 	bool is_event_reached(s_eye_command_t cmd);

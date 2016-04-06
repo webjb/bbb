@@ -2,7 +2,6 @@
 
 #include "arm.h"
 
-#define TIME_STAMP() (s_timer_t::get_inst()->get_str().c_str())
 
 s_arm_t::s_arm_t(int id)
 {
@@ -128,11 +127,11 @@ int s_arm_t::right_low(int speed)
 {
 	PRINT_INFO("RIGHT_LOW %d\n", speed);
 	add_command(0, 0000, 85, 100);//speed);
-	add_command(2, 0000, 40, 100);//speed);
-	add_command(1, 0000, 90, 100);//speed);
+	add_command(2, 0500, 40, 100);//speed);
+	add_command(1, 1000, 90, 100);//speed);
 	add_power_off_cmd(0, 3000);
-	add_power_off_cmd(1, 3000);
-	add_power_off_cmd(2, 3000);
+	add_power_off_cmd(2, 3500);
+	add_power_off_cmd(1, 4000);
 	return 0;
 }
 

@@ -11,7 +11,7 @@
 #define MAX_DUTY  (2600*1000)
 #define DUTY_STEP 20000
 
-#define DUTY_TO_POS(x) ( (x-MIN_DUTY)/10000 )
+#define DUTY_TO_POS(x) ( (x-MIN_DUTY)/DUTY_STEP )
 #define POS_TO_DUTY(y) ( (y*DUTY_STEP + MIN_DUTY) )
 
 char g_path[] = "/sys/devices/ocp.3";
@@ -164,7 +164,7 @@ int s_servo_t::move_to(int pos, int speed)
 	
 	m_state = S_STATE_RUN;
 	
-	PRINT_INFO("move_to duty:%d step:%d\n", m_next_duty, m_duty_steps);
+//	PRINT_INFO("move_to id:%d duty:%d step:%d\n", this->m_id, m_next_duty, m_duty_steps);
 
 	return 0;
 }
@@ -199,7 +199,7 @@ int s_servo_t::run()
 {
 //	int64 ct;
 //	int delt;
-	PRINT_INFO("E s_servo_t::run\n");
+	PRINT_INFO("E s_servo_t::run id:%d\n", m_id);
 	while ( !m_quit)
 	{				
 		if( m_state != S_STATE_RUN )

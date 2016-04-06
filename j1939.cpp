@@ -9,6 +9,7 @@
 #define ADDRESS_CLAIM_TX	1
 #define ADDRESS_CLAIM_RX	2
 
+#define DEBUG_ENABLE 1
 
 #define WHEEL_CMD		4
 
@@ -30,6 +31,9 @@ s_j1939_t::s_j1939_t()
 	m_name[i++] = J1939_CA_NAME7;
 
 	m_flags = 0;	
+
+	m_last_left = -1;
+	m_last_right = -1;
 }
 
 s_j1939_t::~s_j1939_t()
@@ -46,6 +50,8 @@ int s_j1939_t::start()
 int s_j1939_t::stop()
 {
 	s_object_t::stop();
+	m_last_left = -1;
+	m_last_right = -1;
 	return 0;
 }
 
@@ -276,6 +282,14 @@ int s_j1939_t::set_wheels(int left, int right) // 0-100%
 {
 	unsigned int left_speed, left_dir, right_speed, right_dir;
 	J1939_MESSAGE msg;
+
+	if( (left == m_last_left) && (right == m_last_right))
+		return 0;
+
+	PRINT_INFO("wheel: left:%d right:%d\n", left, right);
+	m_last_left = left;
+	m_last_right = right;
+	
 	memset(&msg, 0, sizeof(msg));
 
 //	right = -1* right;

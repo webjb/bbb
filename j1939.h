@@ -44,6 +44,9 @@ private:
     int m_flags;
     unsigned char m_commanded_addr;
     unsigned char m_commanded_addr_source;
+
+	int m_last_left;
+	int m_last_right;
     
 };
 

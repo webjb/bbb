@@ -130,6 +130,8 @@ int s_message_t::tcp_parser()
 		cmd = S_CMD_EYE_STOP_SEARCH;
 	else if( strstr(m_tcp_buf->m_addr, "shoot ball" ) != 0 )
 		cmd = S_CMD_WHEEL_GO_KICK_BALL;
+	else if( strstr(m_tcp_buf->m_addr, "laneloc" ) != 0 )
+		cmd = S_CMD_LANE_LOCTION;
 	
 	switch ( cmd )
 	{

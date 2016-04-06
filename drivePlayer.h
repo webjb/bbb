@@ -16,7 +16,7 @@ public:
 	s_drive_player_t();
 	~s_drive_player_t();
 public:	
-    static s_massage_player_t* get_inst();
+    static s_drive_player_t* get_inst();
     virtual int start();
     virtual int stop();
     virtual int run();	

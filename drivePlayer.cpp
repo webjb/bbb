@@ -48,9 +48,7 @@ int s_drive_player_t::run()
 		LOCK_MUTEX(m_mutex);
 		UNLOCK_MUTEX(m_mutex);
 		usleep(1000*20);
-		continue;
-__msg_loop:
-		usleep(1000*100);
+
 	}
 	m_quit = 1;
 	return 0;

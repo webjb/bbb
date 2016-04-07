@@ -10,6 +10,7 @@
 #include "soccerPlayer.h"
 #include "message.h"
 #include "msgPlayer.h"
+#include "drivePlayer.h"
 
 int get_angle(int x, int y, int * angle, int * distance);
 
@@ -56,6 +57,7 @@ public:
     int is_quit();
 public:
 	s_wheel_t * m_wheel;
+	s_drive_player_t * m_drive_player;
     
 private:
 	static void * thread_keyboard_entry(void *);

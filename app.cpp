@@ -11,6 +11,8 @@ s_app_t::s_app_t()
 	m_wheel = s_wheel_t::get_inst();
 	m_eye = s_eye_t::get_inst();
 	m_arm = s_arm_t::get_inst();
+	m_drive_player = s_drive_player_t::get_inst();
+	
 	m_msg_player = s_massage_player_t::get_inst();
 	
 	m_soccer_player = s_soccer_player_t::get_inst();
@@ -179,7 +181,14 @@ int s_app_t::run_keyboard()
 			case 'q':				
 				m_eye->stop();
 				m_msg_player->stop();
-				break;				
+				break;
+
+			case 'd':
+				m_drive_player->start();
+				break;
+			case 'D':
+				m_drive_player->stop();
+				break;
 		}
 		if( ch == 'q')
 			break;

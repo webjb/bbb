@@ -52,7 +52,7 @@ int s_message_t::tcp_recv_callback(void * parent,void * para)
 	buf = (s_buffer_t*)para;
 
 //RINT_INFO("tcp_recv_callback len:%d %s\n", buf->m_length, buf->m_buffer);
-	memcpy(msg->m_tcp_buf->m_addr + msg->m_tcp_buf->m_wpos, buf->m_buffer, buf->m_length);
+	memcpy(msg->m_tcp_buf->m_addr + msg->m_tcp_buf->m_wpos, buf->m_buffer, buf->m_length + 1);
 	msg->m_tcp_buf->m_wpos += buf->m_length;
 
 	msg->tcp_parser();
@@ -196,6 +196,9 @@ int s_message_t::tcp_parser()
 			break;
 		case S_CMD_EYE_STOP_SEARCH:
 //			s_app->eye_stop_search();
+			break;
+		case S_CMD_LANE_LOCTION:
+			s_app->m_drive_player->on_location(m_tcp_buf->m_addr);
 			break;
 	}
 	// just clear all, need to improvement

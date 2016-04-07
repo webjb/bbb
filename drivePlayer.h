@@ -21,12 +21,13 @@ public:
     virtual int stop();
     virtual int run();	
 
-	int play();
+	int on_location(char * msg);
 
 private:
-	
+	int parse(char *msg);
     int m_run_state;
 	int m_exit;
+    s_wheel_t * m_wheel;
 
 };
 

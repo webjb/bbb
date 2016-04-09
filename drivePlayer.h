@@ -9,6 +9,19 @@
 #include "arm.h"
 #include "wheel.h"
 
+typedef struct s_lane_xy_t_
+{
+	int m_alpha;
+	int m_dis;
+	int m_lr; // left or right
+} s_lane_xy_t;
+
+typedef struct s_lane_loc_t_
+{
+	s_lane_xy_t m_left;
+	s_lane_xy_t m_right;
+	s_lane_xy_t m_top;
+} s_lane_loc_t;
 
 class s_drive_player_t : public s_object_t
 {
@@ -20,7 +33,8 @@ public:
     virtual int start();
     virtual int stop();
     virtual int run();	
-
+	
+	int drive(s_lane_loc_t lane);
 	int on_location(char * msg);
 
 private:
@@ -28,6 +42,10 @@ private:
     int m_run_state;
 	int m_exit;
     s_wheel_t * m_wheel;
+    s_eye_t * m_eye;
+
+	int m_next_turn;
+	list<s_lane_loc_t> m_loc_list;
 
 };
 

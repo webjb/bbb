@@ -57,7 +57,9 @@ public:
 	int turn_right_2way(int speed);
 	int move_backward(int speed);
 	int move_forward(int speed);
+	int move_forward_turn(int left_speed, int right_speed);
 	int move_stop();
+	
 
     int set_position(int alpha, int z);
 	int is_position_lost();

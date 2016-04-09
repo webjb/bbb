@@ -139,11 +139,11 @@ int s_tcp_t::run_server(int socket_id)
 				buf.m_buffer = buffer;
 				buffer[len] = 0;
 				buf.m_length = len;
+				PRINT_INFO("recv: %s\n", buffer);
 				m_callback(m_callback_parent, &buf);
 			}
 			
 //			buffer[len] = 0;
-			PRINT_INFO("recv: %s\n", buffer);
 		}
 	}
 	

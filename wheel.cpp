@@ -124,6 +124,19 @@ int s_wheel_t::move_forward(int speed)
 	return 0;
 }
 
+
+int s_wheel_t::move_forward_turn(int left_speed, int right_speed)
+{
+	PRINT_INFO("wheel::forward turn left:%d right:%d\n", left_speed, right_speed);
+	LOCK_MUTEX(m_mutex);
+	m_j1939->set_wheels(-1*left_speed, -1*right_speed);
+	m_move_state = S_MOVE_STATE_FORWARD;
+	m_last_cmd_time = GET_MS();
+	UNLOCK_MUTEX(m_mutex);
+	return 0;
+}
+
+
 int s_wheel_t::move_backward(int speed)
 {
 	PRINT_INFO("wheel::backward\n");

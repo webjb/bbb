@@ -9,8 +9,21 @@
 #include "arm.h"
 #include "wheel.h"
 
+#define DRV_STATE_STOP	1
+#define DRV_STATE_FWD	2
+#define DRV_STATE_TURN_LEFT	3
+#define DRV_STATE_TURN_RIGHT 4
+
+typedef struct s_point_t_
+{
+	int m_x;
+	int m_y;
+} s_point_t;
+
+
 typedef struct s_lane_xy_t_
 {
+	s_point_t m_points[2];
 	int m_alpha;
 	int m_dis;
 	int m_lr; // left or right

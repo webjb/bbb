@@ -4,31 +4,6 @@
 
 #include <math.h>
 
-#define NEXT_TURN_LEFT	1
-#define NEXT_TURN_RIGHT 2
-
-#define MAX_LINE_GROUP 	30
-
-typedef struct s_line_
-{
-	s_point_t m_start;
-	s_point_t m_end;
-	int m_alpha;
-	int m_dis;
-	int m_lr;
-	
-} s_line;
-
-typedef struct s_line_group_
-{
-	int m_count;
-	s_line m_lines[40];
-	int m_avg_alpha;
-	int m_avg_dis;
-	int m_lr;
-	
-} s_line_group;
-
 s_drive_player_t::s_drive_player_t()
 {
 	m_wheel = s_wheel_t::get_inst();
@@ -199,8 +174,8 @@ int s_drive_player_t::parse(char * msg)
 		points[2*j+1].m_y = num[i++];
 		dis = calc_distance(width, height, points[2*j], points[2*j+1], alpha, lr);
 		
-//		to_axis(width, height, points[2*j]);
-//		to_axis(width, height, points[2*j+1]);
+		to_axis(width, height, points[2*j]);
+		to_axis(width, height, points[2*j+1]);
 
 		int findit = 0;
 		for( k=0;k<MAX_LINE_GROUP;k++)
@@ -208,6 +183,8 @@ int s_drive_player_t::parse(char * msg)
 			if( pline_group[k]->m_avg_dis == -1 )
 				continue;
 			if( (lr == pline_group[k]->m_lr ) 
+				&& ( dis > pline_group[k]->m_avg_dis - 100)
+				&& ( dis < pline_group[k]->m_avg_dis + 100)
 				&& ( (int)alpha > pline_group[k]->m_avg_alpha-10 ) 
 				&& ( (int)alpha < pline_group[k]->m_avg_alpha+10 )
 				)
@@ -225,6 +202,7 @@ int s_drive_player_t::parse(char * msg)
 				pline_group[k]->m_count ++;
 				pline_group[k]->m_avg_alpha = (int)alpha;
 				pline_group[k]->m_avg_dis = dis;
+				pline_group[k]->m_lr = lr;
 				findit = 1;
 				break;
 			}
@@ -253,6 +231,7 @@ int s_drive_player_t::parse(char * msg)
 			pline_group[k]->m_count = 1;
 			pline_group[k]->m_avg_alpha = (int)alpha;
 			pline_group[k]->m_avg_dis = dis;
+			pline_group[k]->m_lr = lr;
 		}
 		
 		printf(" (%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d\n", points[2*j].m_x, points[2*j].m_y, points[2*j+1].m_x, points[2*j+1].m_y, (int)alpha, dis, lr);
@@ -262,26 +241,78 @@ int s_drive_player_t::parse(char * msg)
 	{
 		if( pline_group[i]->m_count == 0 )
 			break;
-		printf("group: count:%d ", pline_group[i]->m_count);
+		printf("group: count:%d \n", pline_group[i]->m_count);
 		int avg_alpha = 0;
 		int avg_dis = 0;
+		s_point_t point_top;
+		s_point_t point_bottom;
+
+		point_bottom.m_x = pline_group[i]->m_lines[0].m_start.m_x;
+		point_bottom.m_y = pline_group[i]->m_lines[0].m_start.m_y;
+		point_top.m_x = point_bottom.m_x;
+		point_top.m_y = point_bottom.m_y;
+		
 		for( j=0;j<pline_group[i]->m_count; j++)
 		{
 			s_line *pline = &pline_group[i]->m_lines[j];
-			printf("(%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d ", pline->m_start.m_x, pline->m_start.m_y, pline->m_end.m_x, pline->m_end.m_y,
-				pline->m_alpha, pline->m_dis, pline->m_lr);
 				
 			avg_alpha += pline->m_alpha;
 			avg_dis += pline->m_dis;
+
+			if( point_top.m_y < pline->m_start.m_y)
+			{
+				point_top.m_y = pline->m_start.m_y;
+				point_top.m_x = pline->m_start.m_x;
+			}
+			
+			if( point_top.m_y < pline->m_end.m_y)
+			{
+				point_top.m_y = pline->m_end.m_y;
+				point_top.m_x = pline->m_end.m_x;
+			}
+			
+			if( point_bottom.m_y > pline->m_start.m_y)
+			{
+				point_bottom.m_y = pline->m_start.m_y;
+				point_bottom.m_x = pline->m_start.m_x;
+			}
+			
+			if( point_bottom.m_y > pline->m_end.m_y)
+			{
+				point_bottom.m_y = pline->m_end.m_y;
+				point_bottom.m_x = pline->m_end.m_x;
+			}
+			
+			printf("(%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d\n", pline->m_start.m_x, pline->m_start.m_y, pline->m_end.m_x, pline->m_end.m_y,
+				pline->m_alpha, pline->m_dis, pline->m_lr);
 		}
 		avg_alpha /= pline_group[i]->m_count;
 		avg_dis /= pline_group[i]->m_count;
-		printf(" avg_alpha:%d avg_dis:%d\n", avg_alpha, avg_dis);
+
+		pline_group[i]->m_avg_alpha = avg_alpha;
+		pline_group[i]->m_avg_dis = avg_dis;
+		
+		pline_group[i]->m_point_bot.m_x = point_bottom.m_x;
+		pline_group[i]->m_point_bot.m_y = point_bottom.m_y;
+		
+		pline_group[i]->m_point_top.m_x = point_top.m_x;
+		pline_group[i]->m_point_top.m_y = point_top.m_y;
+		
+		printf(" avg_alpha:%d avg_dis:%d bot:(%d, %d) top:(%d,%d)\n", avg_alpha, avg_dis,
+			point_bottom.m_x, point_bottom.m_y,point_top.m_x, point_top.m_y);
+		
 	}
 	
 	for( i=0;i<MAX_LINE_GROUP;i++)
 		delete pline_group[i];
 	printf("\n");
+
+	
+	if( !is_started() )
+		return 0;
+
+	drive(pline_group);
+	
 	return 0;
 }
 
@@ -369,6 +400,12 @@ int s_drive_player_t::parse(char * msg)
 	return 0;
 }
 #endif
+
+int s_drive_player_t::drive(s_line_group * pline_group[])
+{
+
+	return 0;
+}
 
 int s_drive_player_t::drive(s_lane_loc_t lane)
 {

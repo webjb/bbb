@@ -14,6 +14,13 @@
 #define DRV_STATE_TURN_LEFT	3
 #define DRV_STATE_TURN_RIGHT 4
 
+
+#define NEXT_TURN_LEFT	1
+#define NEXT_TURN_RIGHT 2
+
+#define MAX_LINE_GROUP 	30
+
+
 typedef struct s_point_t_
 {
 	int m_x;
@@ -36,6 +43,30 @@ typedef struct s_lane_loc_t_
 	s_lane_xy_t m_top;
 } s_lane_loc_t;
 
+
+typedef struct s_line_
+{
+	s_point_t m_start;
+	s_point_t m_end;
+	int m_alpha;
+	int m_dis;
+	int m_lr;	
+} s_line;
+
+typedef struct s_line_group_
+{
+	int m_count;
+	s_line m_lines[40];
+	int m_avg_alpha;
+	int m_avg_dis;
+	int m_lr;
+
+	s_point_t m_point_bot;
+	s_point_t m_point_top;
+	
+} s_line_group;
+
+
 class s_drive_player_t : public s_object_t
 {
 public:
@@ -47,6 +78,7 @@ public:
     virtual int stop();
     virtual int run();	
 	
+	int drive(s_line_group * pline_group[]);
 	int drive(s_lane_loc_t lane);
 	int on_location(char * msg);
 

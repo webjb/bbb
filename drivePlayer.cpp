@@ -4,10 +4,21 @@
 
 #include <math.h>
 
+#define LANE_TYPE_UNKNOWN 0
+#define LANE_TYPE_LEFT	1
+#define LANE_TYPE_RIGHT	2
+#define LANE_TYPE_LEFT_TOP	3
+#define LANE_TYPE_RIGHT_TOP 4
+
 s_drive_player_t::s_drive_player_t()
 {
 	m_wheel = s_wheel_t::get_inst();
 	m_eye = s_eye_t::get_inst();
+
+	memset(&m_lane_left, 0, sizeof(m_lane_left));
+	memset(&m_lane_right, 0, sizeof(m_lane_right));
+	memset(&m_lane_left_top, 0, sizeof(m_lane_left_top));
+	memset(&m_lane_right_top, 0, sizeof(m_lane_right_top));
 
 }
 
@@ -32,6 +43,23 @@ void to_axis(int width, int height, s_point_t & p)
 
 
 #define PI 3.14159
+
+int get_points_distance(s_point_t p0, s_point_t p1)
+{
+	float dis;
+	float fx;
+	float fy;
+
+	fx = (float)(p0.m_x - p1.m_x);
+	fx = fx*fx;
+
+	fy = (float)(p0.m_y - p1.m_y);
+	fy = fy*fy;
+
+	dis = sqrt(fx + fy);
+	return (int)dis;
+	
+}
 
 int calc_distance(int width, int height, s_point_t p0, s_point_t p1, float & alpha, int & lr ) 
 {
@@ -307,103 +335,257 @@ int s_drive_player_t::parse(char * msg)
 		delete pline_group[i];
 	printf("\n");
 
+	detect_direction(pline_group);
 	
 	if( !is_started() )
 		return 0;
 
-	drive(pline_group);
 	
 	return 0;
 }
 
-#if 0
-int s_drive_player_t::parse(char * msg)
-{
-	char * pbuf = strstr(msg, "count=");
-	int count;
-	int i;
-	int alpha;
-	int dis;
-	int lr;
-	pbuf += 6;
-	count = atoi(pbuf);
-	pbuf ++;
-	printf("count =%d\n", count);
-	s_lane_loc_t lane;
-	memset(&lane, 0, sizeof(s_lane_loc_t));
-	lane.m_left.m_dis = -1;
-	lane.m_right.m_dis = -1;
-	lane.m_top.m_dis = -1;
 
+int s_drive_player_t::detect_direction(s_line_group * pline_group[])
+{
+	int i;
 	
-	
-	for(i=0;i<count;i++)
+	// find right
+	for( i=0;i<MAX_LINE_GROUP;i++)
 	{
-		int data[7];
-		for( int j=0; j<7; j++)
+		if( pline_group[i]->m_count <= 0 )
+			continue;
+
+		if( pline_group[i]->m_avg_alpha < 45 && pline_group[i]->m_avg_alpha > -45)
 		{
-			if( j==0 )
+		}			
+		else if( (pline_group[i]->m_lr == 1) )
+		{
+			if( m_lane_right.m_count <= 0 )
 			{
-				pbuf = strstr(pbuf, "(");
+				memcpy(&m_lane_right, pline_group[i], sizeof(m_lane_right));
 			}
-			else
+			else if( m_lane_right.m_avg_dis > pline_group[i]->m_avg_dis)
 			{
-				pbuf = strstr(pbuf, ",");
-			}
-			pbuf ++;
-			data[j] = atoi(pbuf);
+				memcpy(&m_lane_right, pline_group[i], sizeof(m_lane_right));
+			}				
 		}
-		
-		alpha = data[4];
-		dis = data[5];
-		lr = data[6];
-		
-		if( alpha >= -50 && alpha < 50)
+	}
+	// find left
+	for( i=0;i<MAX_LINE_GROUP;i++)
+	{
+		if( pline_group[i]->m_count <= 0 )
+			continue;
+	
+		if( pline_group[i]->m_avg_alpha < 45 && pline_group[i]->m_avg_alpha > -45)
 		{
-			lane.m_top.m_alpha = alpha;
-			lane.m_top.m_dis = dis;
-			lane.m_top.m_points[0].m_x = data[0];
-			lane.m_top.m_points[0].m_y = data[1];
-			lane.m_top.m_points[1].m_x = data[2];
-			lane.m_top.m_points[1].m_y = data[3];
-		}
-		else if( lr == 1 )
-		{
-			lane.m_right.m_alpha = alpha;
-			lane.m_right.m_dis = dis;
-			lane.m_right.m_points[0].m_x = data[0];
-			lane.m_right.m_points[0].m_y = data[1];
-			lane.m_right.m_points[1].m_x = data[2];
-			lane.m_right.m_points[1].m_y = data[3];
-		}
+		}			
 		else
 		{
-			lane.m_left.m_alpha = alpha;
-			lane.m_left.m_dis = dis;
-			lane.m_left.m_points[0].m_x = data[0];
-			lane.m_left.m_points[0].m_y = data[1];
-			lane.m_left.m_points[1].m_x = data[2];
-			lane.m_left.m_points[1].m_y = data[3];
+			if( m_lane_left.m_count <= 0 )
+			{
+				memcpy(&m_lane_left, pline_group[i], sizeof(m_lane_left));
+			}
+			else if( m_lane_left.m_avg_dis > pline_group[i]->m_avg_dis)
+			{
+				memcpy(&m_lane_left, pline_group[i], sizeof(m_lane_left));
+			}				
 		}
 		
 	}
-	printf("lane: right:(%d, %d) top:(%d,%d) left:(%d, %d)\n", 
-		lane.m_right.m_alpha, lane.m_right.m_dis, 
-		lane.m_top.m_alpha, lane.m_top.m_dis, 
-		lane.m_left.m_alpha, lane.m_left.m_dis);
-
-	if( !is_started() )
-		return 0;
-
-	drive(lane);
 	
+	// find right top	
+	// find left top
+	for( i=0;i<MAX_LINE_GROUP;i++)
+	{
+		s_line_group * g;
+		g = pline_group[i];
+		if( g->m_count <= 0 )
+			continue;
+
+		if( g->m_avg_alpha < 45 && g->m_avg_alpha > -45)
+		{
+			int dis0 = -1;
+			int dis1 = -1;
+			int dis2 = -1;
+			int dis3 = -1;
+
+			if( g->m_point_top.m_x < g->m_point_bot.m_x )
+			{
+				int tmp_x;
+				int tmp_y;
+
+				tmp_x = g->m_point_top.m_x;
+				tmp_y = g->m_point_top.m_y;
+
+				g->m_point_top.m_x = g->m_point_bot.m_x;
+				g->m_point_top.m_y = g->m_point_bot.m_y;
+
+				g->m_point_bot.m_x = tmp_x;
+				g->m_point_bot.m_y = tmp_y;
+				
+			}
+
+			if( m_lane_left.m_count > 0)
+			{
+				dis0 = get_points_distance(pline_group[i]->m_point_top, m_lane_left.m_point_top);
+				dis1 = get_points_distance(pline_group[i]->m_point_bot, m_lane_left.m_point_top);
+
+				if( dis0 > dis1 )
+					dis0 = dis1;
+			}
+			
+			if( m_lane_right.m_count > 0)
+			{
+				dis2 = get_points_distance(pline_group[i]->m_point_top, m_lane_right.m_point_top);
+				dis3 = get_points_distance(pline_group[i]->m_point_bot, m_lane_right.m_point_top);
+
+				if( dis2 > dis3)
+					dis2 = dis3;
+			}
+
+			if( (dis0 == -1) && (dis2 == -1) )
+			{
+				if( m_lane_left_top.m_count > 0)
+				{
+					memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));
+				}
+				else
+				{
+					memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));
+				}
+				
+			}
+			else if( (dis0 == -1 ) && (dis2 >= 0 ))
+			{
+				memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));				
+			}
+			else if( (dis0 >= 0 ) && (dis2 == -1 ))
+			{
+				memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));				
+			}
+			else if( dis0 > dis2 )
+			{
+				memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));								
+			}
+			else
+			{
+				memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));				
+			}						
+		}			
+	}
+
+	
+
 	return 0;
 }
-#endif
 
-int s_drive_player_t::drive(s_line_group * pline_group[])
+int s_drive_player_t::drive()
 {
+	if( m_run_state == DRV_STATE_FWD)
+	{
+		if( (m_lane_right.m_count > 0) &&  (m_lane_right_top.m_count > 0) )
+		{
+			if( m_lane_right_top.m_point_top.m_x > m_lane_right_top.m_point_bot.m_x )
+				m_next_turn = NEXT_TURN_RIGHT;
+			else
+				m_next_turn = NEXT_TURN_LEFT;
+		}
+		else if( (m_lane_left.m_count > 0) &&  (m_lane_left_top.m_count > 0) )
+		{
+			if( m_lane_left_top.m_point_top.m_x > m_lane_left_top.m_point_bot.m_x )
+				m_next_turn = NEXT_TURN_RIGHT;
+			else
+				m_next_turn = NEXT_TURN_LEFT;
+		}
+	
+	}
+ 	if( (m_lane_left.m_count <= 0) 
+		&& (m_lane_right.m_count <= 0)
+		&& (m_lane_left_top.m_count <= 0)
+		&& (m_lane_right_top.m_count <= 0)
+		)
+	{
+		m_wheel->move_stop();
+		m_run_state = DRV_STATE_STOP;
+		
+		printf("drive stop\n");
+		return 0;
+	}
 
+
+	if( m_run_state == DRV_STATE_FWD )
+	{
+		if(1)
+		{
+			if( m_next_turn == NEXT_TURN_LEFT )
+			{
+				m_wheel->move_forward_turn(10,25);
+				m_run_state = DRV_STATE_TURN_LEFT;
+				printf("top turn left...\n");
+			}
+			else
+			{
+				m_wheel->move_forward_turn(25,10);
+				m_run_state = DRV_STATE_TURN_RIGHT;
+				printf("top turn right ...\n");
+			}
+		}
+	}
+	
+	if( m_run_state == DRV_STATE_TURN_LEFT )
+	{
+		if( ( (m_lane_right.m_count > 0 ) && abs(m_lane_right.m_avg_alpha) > 72) 
+//			|| ( (m_lane_left.m_count > 0 ) && (m_lane_left.m_dis != -1) ) 
+			)
+		  
+		{
+			m_run_state = DRV_STATE_FWD;
+		}
+		else
+			return 0;
+	}
+	m_run_state = DRV_STATE_FWD;
+
+	if( (m_lane_right.m_count > 0 ) && (m_lane_left.m_count > 0 ) )
+	{
+		int d;
+		d = (m_lane_right.m_avg_dis + m_lane_left.m_avg_dis)/2;
+		if( m_lane_right.m_avg_dis > d + 50 ) // turn right
+		{
+			m_wheel->move_forward_turn(15, 10);
+			printf("drive turn right ...\n");
+		}
+		else if( m_lane_right.m_avg_dis < d - 50 ) // turn left
+		{
+			m_wheel->move_forward_turn(10, 15);
+			printf("drive turn left ...\n");
+		}
+		else
+		{
+			m_wheel->move_forward_turn(15,15);
+			printf("drive forward ...\n");
+		}
+	}
+	else
+	{
+		if( m_lane_right.m_avg_dis < 200 )
+		{
+			m_wheel->move_forward_turn(10, 15);
+			printf("drive turn left\n");
+		}
+		else if( m_lane_right.m_avg_dis > 400 )
+		{
+			m_wheel->move_forward_turn(15,10);
+			printf("drive turn right\n");
+		}
+		else
+		{
+			m_wheel->move_forward_turn(15,15);
+			printf("drive forward\n");
+		}
+	}
+	
+	
 	return 0;
 }
 

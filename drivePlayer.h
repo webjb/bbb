@@ -63,6 +63,8 @@ typedef struct s_line_group_
 
 	s_point_t m_point_bot;
 	s_point_t m_point_top;
+
+	int m_type;
 	
 } s_line_group;
 
@@ -78,7 +80,8 @@ public:
     virtual int stop();
     virtual int run();	
 	
-	int drive(s_line_group * pline_group[]);
+	int detect_direction(s_line_group * pline_group[]);
+	int drive();
 	int drive(s_lane_loc_t lane);
 	int on_location(char * msg);
 
@@ -91,6 +94,11 @@ private:
 
 	int m_next_turn;
 	list<s_lane_loc_t> m_loc_list;
+
+	s_line_group m_lane_left;
+	s_line_group m_lane_right;
+	s_line_group m_lane_left_top;
+	s_line_group m_lane_right_top;
 
 };
 

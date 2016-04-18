@@ -326,20 +326,21 @@ int s_drive_player_t::parse(char * msg)
 		pline_group[i]->m_point_top.m_x = point_top.m_x;
 		pline_group[i]->m_point_top.m_y = point_top.m_y;
 		
-		printf(" avg_alpha:%d avg_dis:%d bot:(%d, %d) top:(%d,%d)\n", avg_alpha, avg_dis,
+		printf("lr:%d count:%d avg_alpha:%d avg_dis:%d bot:(%d, %d) top:(%d,%d)\n", pline_group[i]->m_lr, pline_group[i]->m_count, avg_alpha, avg_dis,
 			point_bottom.m_x, point_bottom.m_y,point_top.m_x, point_top.m_y);
 		
 	}
 	
-	for( i=0;i<MAX_LINE_GROUP;i++)
-		delete pline_group[i];
 	printf("\n");
 
 	detect_direction(pline_group);
 	
+	for( i=0;i<MAX_LINE_GROUP;i++)
+		delete pline_group[i];
 	if( !is_started() )
 		return 0;
 
+	drive();
 	
 	return 0;
 }
@@ -348,7 +349,12 @@ int s_drive_player_t::parse(char * msg)
 int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 {
 	int i;
-	
+
+	m_lane_right.m_count = -1;
+	m_lane_left.m_count = -1;
+	m_lane_right_top.m_count = -1;
+	m_lane_left_top.m_count = -1;
+		
 	// find right
 	for( i=0;i<MAX_LINE_GROUP;i++)
 	{
@@ -379,7 +385,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( pline_group[i]->m_avg_alpha < 45 && pline_group[i]->m_avg_alpha > -45)
 		{
 		}			
-		else
+		else if( (pline_group[i]->m_lr == 0) )
 		{
 			if( m_lane_left.m_count <= 0 )
 			{
@@ -474,7 +480,32 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		}			
 	}
 
-	
+	for( i=0; i<4; i++)
+	{
+		s_line_group *lg;
+		
+		switch (i  )
+		{
+			case 0:
+				printf("left: ");
+				lg = &m_lane_left;
+				break;
+			case 1:
+				printf("right: ");
+				lg = &m_lane_right;
+				break;
+			case 2:
+				printf("left_top: ");
+				lg = &m_lane_left_top;
+				break;
+			case 3:
+				printf("right_top: ");
+				lg = &m_lane_right_top;
+				break;
+		}
+		printf("count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n", lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
+		
+	}
 
 	return 0;
 }
@@ -523,7 +554,7 @@ int s_drive_player_t::drive()
 				m_run_state = DRV_STATE_TURN_LEFT;
 				printf("top turn left...\n");
 			}
-			else
+			else if( m_next_turn == NEXT_TURN_RIGHT )
 			{
 				m_wheel->move_forward_turn(25,10);
 				m_run_state = DRV_STATE_TURN_RIGHT;
@@ -562,7 +593,7 @@ int s_drive_player_t::drive()
 		}
 		else
 		{
-			m_wheel->move_forward_turn(15,15);
+			m_wheel->move_forward(15);
 			printf("drive forward ...\n");
 		}
 	}
@@ -580,7 +611,7 @@ int s_drive_player_t::drive()
 		}
 		else
 		{
-			m_wheel->move_forward_turn(15,15);
+			m_wheel->move_forward(15);
 			printf("drive forward\n");
 		}
 	}

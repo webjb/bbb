@@ -180,8 +180,6 @@ int s_drive_player_t::parse(char * msg)
 
 	printf("count:%d size:%d-%d \n", count, width, height);
 
-	if( count == 0 )
-		return 0;
 	
 	for( k=0;k<MAX_LINE_GROUP;k++)
 	{
@@ -337,10 +335,6 @@ int s_drive_player_t::parse(char * msg)
 	
 	for( i=0;i<MAX_LINE_GROUP;i++)
 		delete pline_group[i];
-	if( !is_started() )
-		return 0;
-
-	drive();
 	
 	return 0;
 }
@@ -512,24 +506,9 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 
 int s_drive_player_t::drive()
 {
-	if( m_run_state == DRV_STATE_FWD)
-	{
-		if( (m_lane_right.m_count > 0) &&  (m_lane_right_top.m_count > 0) )
-		{
-			if( m_lane_right_top.m_point_top.m_x > m_lane_right_top.m_point_bot.m_x )
-				m_next_turn = NEXT_TURN_RIGHT;
-			else
-				m_next_turn = NEXT_TURN_LEFT;
-		}
-		else if( (m_lane_left.m_count > 0) &&  (m_lane_left_top.m_count > 0) )
-		{
-			if( m_lane_left_top.m_point_top.m_x > m_lane_left_top.m_point_bot.m_x )
-				m_next_turn = NEXT_TURN_RIGHT;
-			else
-				m_next_turn = NEXT_TURN_LEFT;
-		}
+	int right_height;
+	int left_height;
 	
-	}
  	if( (m_lane_left.m_count <= 0) 
 		&& (m_lane_right.m_count <= 0)
 		&& (m_lane_left_top.m_count <= 0)
@@ -544,37 +523,89 @@ int s_drive_player_t::drive()
 	}
 
 
-	if( m_run_state == DRV_STATE_FWD )
+	right_height = -1;
+	left_height = -1;
+	
+	if( m_run_state == DRV_STATE_FWD)
 	{
-		if(1)
+		int d1;
+		int d2;
+		m_next_turn = 0;
+		if( (m_lane_right.m_count > 0) &&  (m_lane_right_top.m_count > 0) )
 		{
-			if( m_next_turn == NEXT_TURN_LEFT )
+			d1 = abs(m_lane_right_top.m_point_bot.m_x - m_lane_right.m_point_top.m_x);
+			d2 = abs(m_lane_right_top.m_point_top.m_x - m_lane_right.m_point_top.m_x);
+			if( d1 < d2 )
+				m_next_turn = NEXT_TURN_RIGHT;
+			else
+				m_next_turn = NEXT_TURN_LEFT;
+			right_height = m_lane_right_top.m_avg_dis;
+		}
+
+		if( (m_lane_left.m_count > 0) &&  (m_lane_left_top.m_count > 0) )
+		{
+			d1 = abs(m_lane_left_top.m_point_bot.m_x - m_lane_left.m_point_top.m_x);
+			d2 = abs(m_lane_left_top.m_point_top.m_x - m_lane_left.m_point_top.m_x);
+			if( d1 < d2 )
+				m_next_turn = NEXT_TURN_RIGHT;
+			else
+				m_next_turn = NEXT_TURN_LEFT;
+
+			left_height = m_lane_left_top.m_avg_dis;
+		}
+
+		if( m_next_turn == NEXT_TURN_LEFT )
+		{
+			if( right_height <= 250 )
 			{
 				m_wheel->move_forward_turn(10,25);
 				m_run_state = DRV_STATE_TURN_LEFT;
-				printf("top turn left...\n");
-			}
-			else if( m_next_turn == NEXT_TURN_RIGHT )
-			{
-				m_wheel->move_forward_turn(25,10);
-				m_run_state = DRV_STATE_TURN_RIGHT;
-				printf("top turn right ...\n");
+				m_last_time = s_timer_t::get_inst()->get_ms();
+				printf("top turn left dis:%d...\n", right_height);
 			}
 		}
+		else if( m_next_turn == NEXT_TURN_RIGHT )
+		{
+			if( left_height <= 250 )
+			{
+				m_wheel->move_forward_turn(25, 10);
+				m_last_time = s_timer_t::get_inst()->get_ms();
+				m_run_state = DRV_STATE_TURN_RIGHT;
+				printf("top turn right dis:%d...\n", left_height);
+			}
+		}
+	
 	}
+
 	
 	if( m_run_state == DRV_STATE_TURN_LEFT )
 	{
-		if( ( (m_lane_right.m_count > 0 ) && abs(m_lane_right.m_avg_alpha) > 72) 
-//			|| ( (m_lane_left.m_count > 0 ) && (m_lane_left.m_dis != -1) ) 
-			)
-		  
+		int64 ms;
+		ms = s_timer_t::get_inst()->get_ms();
+		ms = ms - m_last_time;
+		if( ( ms > 3000) && (m_lane_right.m_count > 0 ) && (abs(m_lane_right.m_avg_alpha) > 65) )
 		{
 			m_run_state = DRV_STATE_FWD;
+			m_wheel->move_forward(15);
+			printf("turn left ---> forward\n");
 		}
-		else
-			return 0;
+		return 0;
 	}
+
+	if( m_run_state == DRV_STATE_TURN_RIGHT )
+	{
+		int64 ms;
+		ms = s_timer_t::get_inst()->get_ms();
+		ms = ms - m_last_time;
+		if(  ( ms > 3000) && (m_lane_left.m_count > 0 ) &&  (abs(m_lane_left.m_avg_alpha) > 65) )
+		{
+			m_run_state = DRV_STATE_FWD;
+			m_wheel->move_forward(15);
+			printf("turn right ---> forward\n");
+		}
+		return 0;
+	}
+
 	m_run_state = DRV_STATE_FWD;
 
 	if( (m_lane_right.m_count > 0 ) && (m_lane_left.m_count > 0 ) )
@@ -622,6 +653,7 @@ int s_drive_player_t::drive()
 
 int s_drive_player_t::drive(s_lane_loc_t lane)
 {
+#if 0
 	m_loc_list.push_back(lane);
 
 	if( m_run_state == DRV_STATE_FWD )
@@ -722,13 +754,18 @@ int s_drive_player_t::drive(s_lane_loc_t lane)
 			printf("drive forward\n");
 		}
 	}
-	
+#endif	
 	return 0;
 }
 
 int s_drive_player_t::on_location(char * msg)
 {
 	parse(msg);
+	
+	if( !is_started() )
+		return 0;
+
+	drive();
 
 	return 0;
 }

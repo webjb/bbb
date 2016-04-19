@@ -94,6 +94,8 @@ private:
 
 	int m_next_turn;
 	list<s_lane_loc_t> m_loc_list;
+	
+	int64 m_last_time;
 
 	s_line_group m_lane_left;
 	s_line_group m_lane_right;

@@ -277,13 +277,53 @@ int s_drive_player_t::parse(char * msg)
 		point_bottom.m_y = pline_group[i]->m_lines[0].m_start.m_y;
 		point_top.m_x = point_bottom.m_x;
 		point_top.m_y = point_bottom.m_y;
-		
-		for( j=0;j<pline_group[i]->m_count; j++)
+
+		if( abs(pline_group[i]->m_avg_alpha) < 45 )
 		{
-			s_line *pline = &pline_group[i]->m_lines[j];
+			for( j=0;j<pline_group[i]->m_count; j++)
+			{
+				s_line *pline = &pline_group[i]->m_lines[j];
+					
+				avg_alpha += pline->m_alpha;
+				avg_dis += pline->m_dis;
+
+				if( point_top.m_x < pline->m_start.m_x)
+				{
+					point_top.m_y = pline->m_start.m_y;
+					point_top.m_x = pline->m_start.m_x;
+				}
 				
-			avg_alpha += pline->m_alpha;
-			avg_dis += pline->m_dis;
+				if( point_top.m_x < pline->m_end.m_x)
+				{
+					point_top.m_y = pline->m_end.m_y;
+					point_top.m_x = pline->m_end.m_x;
+				}
+				
+				if( point_bottom.m_x > pline->m_start.m_x)
+				{
+					point_bottom.m_y = pline->m_start.m_y;
+					point_bottom.m_x = pline->m_start.m_x;
+				}
+				
+				if( point_bottom.m_x > pline->m_end.m_x)
+				{
+					point_bottom.m_y = pline->m_end.m_y;
+					point_bottom.m_x = pline->m_end.m_x;
+				}
+				
+				printf("(%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d\n", pline->m_start.m_x, pline->m_start.m_y, pline->m_end.m_x, pline->m_end.m_y,
+					pline->m_alpha, pline->m_dis, pline->m_lr);
+			}
+		
+		}
+		else
+		{
+			for( j=0;j<pline_group[i]->m_count; j++)
+			{
+				s_line *pline = &pline_group[i]->m_lines[j];
+					
+				avg_alpha += pline->m_alpha;
+				avg_dis += pline->m_dis;
 
 			if( point_top.m_y < pline->m_start.m_y)
 			{
@@ -305,12 +345,13 @@ int s_drive_player_t::parse(char * msg)
 			
 			if( point_bottom.m_y > pline->m_end.m_y)
 			{
-				point_bottom.m_y = pline->m_end.m_y;
-				point_bottom.m_x = pline->m_end.m_x;
+					point_bottom.m_y = pline->m_end.m_y;
+					point_bottom.m_x = pline->m_end.m_x;
+				}
+				
+				printf("(%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d\n", pline->m_start.m_x, pline->m_start.m_y, pline->m_end.m_x, pline->m_end.m_y,
+					pline->m_alpha, pline->m_dis, pline->m_lr);
 			}
-			
-			printf("(%d,%d)-(%d,%d) alpha:%d dis:%d lr:%d\n", pline->m_start.m_x, pline->m_start.m_y, pline->m_end.m_x, pline->m_end.m_y,
-				pline->m_alpha, pline->m_dis, pline->m_lr);
 		}
 		avg_alpha /= pline_group[i]->m_count;
 		avg_dis /= pline_group[i]->m_count;
@@ -402,7 +443,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( g->m_count <= 0 )
 			continue;
 
-		if( g->m_avg_alpha < 45 && g->m_avg_alpha > -45)
+		if( abs(g->m_avg_alpha) < 45)
 		{
 			int dis0 = -1;
 			int dis1 = -1;
@@ -477,27 +518,31 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 	for( i=0; i<4; i++)
 	{
 		s_line_group *lg;
+		char sz[80];
 		
-		switch (i  )
+		switch (i)
 		{
 			case 0:
-				printf("left: ");
+				sprintf(sz, "left: ");
 				lg = &m_lane_left;
 				break;
 			case 1:
-				printf("right: ");
+				sprintf(sz, "right: ");
 				lg = &m_lane_right;
 				break;
 			case 2:
-				printf("left_top: ");
+				sprintf(sz, "left_top: ");
 				lg = &m_lane_left_top;
 				break;
 			case 3:
-				printf("right_top: ");
+				sprintf(sz, "right_top: ");
 				lg = &m_lane_right_top;
 				break;
 		}
-		printf("count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n", lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
+		if( lg->m_count > 0 )
+		{
+			printf("--- %s --- count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n", sz, lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
+		}
 		
 	}
 
@@ -530,15 +575,20 @@ int s_drive_player_t::drive()
 	{
 		int d1;
 		int d2;
-		m_next_turn = 0;
 		if( (m_lane_right.m_count > 0) &&  (m_lane_right_top.m_count > 0) )
 		{
 			d1 = abs(m_lane_right_top.m_point_bot.m_x - m_lane_right.m_point_top.m_x);
 			d2 = abs(m_lane_right_top.m_point_top.m_x - m_lane_right.m_point_top.m_x);
 			if( d1 < d2 )
+			{
 				m_next_turn = NEXT_TURN_RIGHT;
+				printf("next turn right ...\n");
+			}
 			else
+			{
 				m_next_turn = NEXT_TURN_LEFT;
+				printf("next turn left ...\n");
+			}
 			right_height = m_lane_right_top.m_avg_dis;
 		}
 
@@ -547,17 +597,24 @@ int s_drive_player_t::drive()
 			d1 = abs(m_lane_left_top.m_point_bot.m_x - m_lane_left.m_point_top.m_x);
 			d2 = abs(m_lane_left_top.m_point_top.m_x - m_lane_left.m_point_top.m_x);
 			if( d1 < d2 )
+			{
 				m_next_turn = NEXT_TURN_RIGHT;
+				printf("next turn right ###\n");
+			}
 			else
+			{
 				m_next_turn = NEXT_TURN_LEFT;
+				printf("next turn left ###\n");
+			}
 
 			left_height = m_lane_left_top.m_avg_dis;
 		}
 
 		if( m_next_turn == NEXT_TURN_LEFT )
 		{
-			if( right_height <= 250 )
+			if( ((right_height <= 350 ) && (right_height > 0)) || (m_lane_right.m_count <= 0) )
 			{
+				m_next_turn = 0;
 				m_wheel->move_forward_turn(10,25);
 				m_run_state = DRV_STATE_TURN_LEFT;
 				m_last_time = s_timer_t::get_inst()->get_ms();
@@ -566,8 +623,9 @@ int s_drive_player_t::drive()
 		}
 		else if( m_next_turn == NEXT_TURN_RIGHT )
 		{
-			if( left_height <= 250 )
+			if( ((left_height <= 350 ) && (left_height > 0)) || (m_lane_left.m_count <= 0) )
 			{
+				m_next_turn = 0;
 				m_wheel->move_forward_turn(25, 10);
 				m_last_time = s_timer_t::get_inst()->get_ms();
 				m_run_state = DRV_STATE_TURN_RIGHT;

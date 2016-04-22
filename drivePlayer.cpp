@@ -384,11 +384,15 @@ int s_drive_player_t::parse(char * msg)
 int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 {
 	int i;
+	s_line_group lane_right;
+	s_line_group lane_left;
+	s_line_group lane_right_top;
+	s_line_group lane_left_top;
 
-	m_lane_right.m_count = -1;
-	m_lane_left.m_count = -1;
-	m_lane_right_top.m_count = -1;
-	m_lane_left_top.m_count = -1;
+	lane_right.m_count = -1;
+	lane_left.m_count = -1;
+	lane_right_top.m_count = -1;
+	lane_left_top.m_count = -1;
 		
 	// find right
 	for( i=0;i<MAX_LINE_GROUP;i++)
@@ -396,64 +400,74 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( pline_group[i]->m_count <= 0 )
 			continue;
 
-		if( pline_group[i]->m_avg_alpha < 45 && pline_group[i]->m_avg_alpha > -45)
+		if( abs(pline_group[i]->m_avg_alpha) < 45)
 		{
-		}			
-		else if( (pline_group[i]->m_lr == 1) )
+			continue;
+		}
+		
+		if( (pline_group[i]->m_lr == 1) )
 		{
-			if( m_lane_right.m_count <= 0 )
+			if( lane_right.m_count <= 0 )
 			{
-				memcpy(&m_lane_right, pline_group[i], sizeof(m_lane_right));
+				memcpy(&lane_right, pline_group[i], sizeof(lane_right));
 			}
-			else if( m_lane_right.m_avg_dis > pline_group[i]->m_avg_dis)
+			else if( lane_right.m_avg_dis > pline_group[i]->m_avg_dis)
 			{
-				memcpy(&m_lane_right, pline_group[i], sizeof(m_lane_right));
+				memcpy(&lane_right, pline_group[i], sizeof(lane_right));
 			}				
 		}
 	}
+	
 	// find left
 	for( i=0;i<MAX_LINE_GROUP;i++)
 	{
 		if( pline_group[i]->m_count <= 0 )
 			continue;
 	
-		if( pline_group[i]->m_avg_alpha < 45 && pline_group[i]->m_avg_alpha > -45)
+		if( abs(pline_group[i]->m_avg_alpha) < 45)
 		{
-		}			
-		else if( (pline_group[i]->m_lr == 0) )
+			continue;
+		}
+		
+		if( (pline_group[i]->m_lr == 0) )
 		{
-			if( m_lane_left.m_count <= 0 )
+			if( lane_left.m_count <= 0 )
 			{
-				memcpy(&m_lane_left, pline_group[i], sizeof(m_lane_left));
+				memcpy(&lane_left, pline_group[i], sizeof(lane_left));
 			}
-			else if( m_lane_left.m_avg_dis > pline_group[i]->m_avg_dis)
+			else if( lane_left.m_avg_dis > pline_group[i]->m_avg_dis)
 			{
-				memcpy(&m_lane_left, pline_group[i], sizeof(m_lane_left));
+				memcpy(&lane_left, pline_group[i], sizeof(lane_left));
 			}				
 		}
 		
 	}
-	
+
 	// find right top	
 	// find left top
 	for( i=0;i<MAX_LINE_GROUP;i++)
 	{
+		int dis0 = -1;
+		int dis1 = -1;
+		int dis2 = -1;
+		int dis3 = -1;
+		
 		s_line_group * g;
 		g = pline_group[i];
 		if( g->m_count <= 0 )
-			continue;
-
-		if( abs(g->m_avg_alpha) < 45)
 		{
-			int dis0 = -1;
-			int dis1 = -1;
-			int dis2 = -1;
-			int dis3 = -1;
+			continue;
+		}
 
-			if( g->m_point_top.m_x < g->m_point_bot.m_x )
-			{
-				int tmp_x;
-				int tmp_y;
+		if( abs(g->m_avg_alpha) >= 45)			
+		{
+			continue;
+		}
+
+		if( g->m_point_top.m_x < g->m_point_bot.m_x )
+		{
+			int tmp_x;
+			int tmp_y;
 
 				tmp_x = g->m_point_top.m_x;
 				tmp_y = g->m_point_top.m_y;
@@ -461,60 +475,89 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 				g->m_point_top.m_x = g->m_point_bot.m_x;
 				g->m_point_top.m_y = g->m_point_bot.m_y;
 
-				g->m_point_bot.m_x = tmp_x;
-				g->m_point_bot.m_y = tmp_y;
-				
-			}
+			g->m_point_bot.m_x = tmp_x;
+			g->m_point_bot.m_y = tmp_y;
+			
+		}
 
-			if( m_lane_left.m_count > 0)
+			if( lane_left.m_count > 0)
 			{
-				dis0 = get_points_distance(pline_group[i]->m_point_top, m_lane_left.m_point_top);
-				dis1 = get_points_distance(pline_group[i]->m_point_bot, m_lane_left.m_point_top);
+				dis0 = get_points_distance(g->m_point_top, lane_left.m_point_top);
+				dis1 = get_points_distance(g->m_point_bot, lane_left.m_point_top);
 
 				if( dis0 > dis1 )
 					dis0 = dis1;
 			}
 			
-			if( m_lane_right.m_count > 0)
+			if( lane_right.m_count > 0)
 			{
-				dis2 = get_points_distance(pline_group[i]->m_point_top, m_lane_right.m_point_top);
-				dis3 = get_points_distance(pline_group[i]->m_point_bot, m_lane_right.m_point_top);
+				dis2 = get_points_distance(g->m_point_top, lane_right.m_point_top);
+				dis3 = get_points_distance(g->m_point_bot, lane_right.m_point_top);
 
 				if( dis2 > dis3)
 					dis2 = dis3;
 			}
-
-			if( (dis0 == -1) && (dis2 == -1) )
+			
+			if( (dis0>0) && (dis2>0) )
 			{
-				if( m_lane_left_top.m_count > 0)
+				if( dis0 > dis2 )
 				{
-					memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));
+					memcpy(&lane_right_top, g, sizeof(lane_right_top));
+					printf("find right_top case 1 (%d,%d)\n", dis0, dis2);
 				}
 				else
 				{
-					memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));
+					memcpy(&lane_left_top, g, sizeof(lane_left_top));
+					printf("find left_top case 2 (%d,%d)\n", dis0, dis2);
 				}
 				
 			}
-			else if( (dis0 == -1 ) && (dis2 >= 0 ))
+			else if( dis0 > 0 )
 			{
-				memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));				
+				if( dis0 < 100 )
+				{				
+					memcpy(&lane_left_top, g, sizeof(lane_left_top));
+					printf("find left_top case 3 (%d)\n", dis0);
+				}
 			}
-			else if( (dis0 >= 0 ) && (dis2 == -1 ))
+			else if( dis2 > 0)
 			{
-				memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));				
-			}
-			else if( dis0 > dis2 )
-			{
-				memcpy(&m_lane_right_top, pline_group[i], sizeof(m_lane_right_top));								
+				if( dis2 < 100 )
+				{				
+					memcpy(&lane_right_top, g, sizeof(lane_right_top));
+					printf("find right_top case 4 (%d)\n", dis2);
+				}
 			}
 			else
 			{
-				memcpy(&m_lane_left_top, pline_group[i], sizeof(m_lane_left_top));				
-			}						
-		}			
-	}
+				// no left and right lane, compare with prevoius 
 
+				// similar with left_top
+				if( (g->m_avg_alpha < m_lane_left_top.m_avg_alpha + 5 ) &&
+					(g->m_avg_alpha > m_lane_left_top.m_avg_alpha - 5 ) &&
+					(g->m_avg_dis < m_lane_left_top.m_avg_dis + 20 ) &&
+					(g->m_avg_dis > m_lane_left_top.m_avg_dis - 20) )
+				{
+					memcpy(&lane_left_top, g, sizeof(lane_left_top));					
+					printf("find left_top case 5\n");
+				}
+				else if( (g->m_avg_alpha < m_lane_right_top.m_avg_alpha + 5 ) &&
+					(g->m_avg_alpha > m_lane_right_top.m_avg_alpha - 5 ) &&
+					(g->m_avg_dis < m_lane_right_top.m_avg_dis + 20 ) &&
+					(g->m_avg_dis > m_lane_right_top.m_avg_dis - 20) )
+				{
+					memcpy(&lane_right_top, g, sizeof(lane_right_top));
+					printf("find right_top case 6\n");
+				}				
+			}			
+			
+ 	}
+
+	memcpy(&m_lane_right, &lane_right, sizeof(s_line_group));
+	memcpy(&m_lane_left, &lane_left, sizeof(s_line_group));
+	memcpy(&m_lane_right_top, &lane_right_top, sizeof(s_line_group));
+	memcpy(&m_lane_left_top, &lane_left_top, sizeof(s_line_group));
+	
 	for( i=0; i<4; i++)
 	{
 		s_line_group *lg;

@@ -20,6 +20,14 @@
 
 #define MAX_LINE_GROUP 	30
 
+#define LANE_TYPE_UNKONWN 		0
+#define LANE_TYPE_SIDE_UNKNOWN 	1
+#define LANE_TYPE_SIDE_LEFT		2
+#define LANE_TYPE_SIDE_RIGHT	3
+#define LANE_TYPE_TOP_UNKNOWN 	4
+#define LANE_TYPE_TOP_LEFT		5
+#define LANE_TYPE_TOP_RIGHT 	6
+
 
 typedef struct s_point_t_
 {

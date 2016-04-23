@@ -4,12 +4,6 @@
 
 #include <math.h>
 
-#define LANE_TYPE_UNKNOWN 0
-#define LANE_TYPE_LEFT	1
-#define LANE_TYPE_RIGHT	2
-#define LANE_TYPE_LEFT_TOP	3
-#define LANE_TYPE_RIGHT_TOP 4
-
 s_drive_player_t::s_drive_player_t()
 {
 	m_wheel = s_wheel_t::get_inst();
@@ -89,7 +83,7 @@ int calc_distance(int width, int height, s_point_t p0, s_point_t p1, float & alp
         alpha = 0;
         d = y1;
     }
-    else if( (x1 != x0) && (x1 != 0) ) {
+    else if( x1 != x0 ) {
         a = (float) (y1 - y0);
         a = a / ((float) (x1 - x0));
         b = y0 - a * (float) x0;
@@ -364,6 +358,11 @@ int s_drive_player_t::parse(char * msg)
 		
 		pline_group[i]->m_point_top.m_x = point_top.m_x;
 		pline_group[i]->m_point_top.m_y = point_top.m_y;
+
+		if( abs(avg_alpha) < 45)
+			pline_group[i]->m_type = LANE_TYPE_TOP_UNKNOWN;
+		else
+			pline_group[i]->m_type = LANE_TYPE_SIDE_UNKNOWN;
 		
 		printf("lr:%d count:%d avg_alpha:%d avg_dis:%d bot:(%d, %d) top:(%d,%d)\n", pline_group[i]->m_lr, pline_group[i]->m_count, avg_alpha, avg_dis,
 			point_bottom.m_x, point_bottom.m_y,point_top.m_x, point_top.m_y);
@@ -400,7 +399,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( pline_group[i]->m_count <= 0 )
 			continue;
 
-		if( abs(pline_group[i]->m_avg_alpha) < 45)
+		if( pline_group[i]->m_type == LANE_TYPE_TOP_UNKNOWN )
 		{
 			continue;
 		}
@@ -415,6 +414,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 			{
 				memcpy(&lane_right, pline_group[i], sizeof(lane_right));
 			}				
+			pline_group[i]->m_type = LANE_TYPE_SIDE_RIGHT;
 		}
 	}
 	
@@ -424,7 +424,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( pline_group[i]->m_count <= 0 )
 			continue;
 	
-		if( abs(pline_group[i]->m_avg_alpha) < 45)
+		if( pline_group[i]->m_type == LANE_TYPE_TOP_UNKNOWN )
 		{
 			continue;
 		}
@@ -439,6 +439,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 			{
 				memcpy(&lane_left, pline_group[i], sizeof(lane_left));
 			}				
+			pline_group[i]->m_type = LANE_TYPE_SIDE_LEFT;
 		}
 		
 	}
@@ -459,7 +460,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 			continue;
 		}
 
-		if( abs(g->m_avg_alpha) >= 45)			
+		if( pline_group[i]->m_type != LANE_TYPE_TOP_UNKNOWN )
 		{
 			continue;
 		}
@@ -496,60 +497,72 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 
 				if( dis2 > dis3)
 					dis2 = dis3;
-			}
-			
-			if( (dis0>0) && (dis2>0) )
+		}
+		
+		if( (dis0>0) && (dis2>0) )
+		{
+			if( dis0 > dis2 )
 			{
-				if( dis0 > dis2 )
-				{
-					memcpy(&lane_right_top, g, sizeof(lane_right_top));
-					printf("find right_top case 1 (%d,%d)\n", dis0, dis2);
-				}
-				else
-				{
-					memcpy(&lane_left_top, g, sizeof(lane_left_top));
-					printf("find left_top case 2 (%d,%d)\n", dis0, dis2);
-				}
-				
-			}
-			else if( dis0 > 0 )
-			{
-				if( dis0 < 100 )
-				{				
-					memcpy(&lane_left_top, g, sizeof(lane_left_top));
-					printf("find left_top case 3 (%d)\n", dis0);
-				}
-			}
-			else if( dis2 > 0)
-			{
-				if( dis2 < 100 )
-				{				
-					memcpy(&lane_right_top, g, sizeof(lane_right_top));
-					printf("find right_top case 4 (%d)\n", dis2);
-				}
+				g->m_type = LANE_TYPE_TOP_RIGHT;
+				memcpy(&lane_right_top, g, sizeof(lane_right_top));
+				printf("find right_top case 1 (%d,%d)\n", dis0, dis2);
 			}
 			else
 			{
-				// no left and right lane, compare with prevoius 
+				g->m_type = LANE_TYPE_TOP_LEFT;
+				memcpy(&lane_left_top, g, sizeof(lane_left_top));
+				printf("find left_top case 2 (%d,%d)\n", dis0, dis2);
+			}
+			continue;
+			
+		}
+		
+		if( dis0 > 0 )
+		{
+			if( dis0 < 100 )
+			{				
+				g->m_type = LANE_TYPE_TOP_LEFT;
+				memcpy(&lane_left_top, g, sizeof(lane_left_top));
+				printf("find left_top case 3 (%d)\n", dis0);
+				continue;
+			}
+		}
+		
+		if( dis2 > 0)
+		{
+			if( dis2 < 100 )
+			{				
+				g->m_type = LANE_TYPE_TOP_RIGHT;
+				memcpy(&lane_right_top, g, sizeof(lane_right_top));
+				printf("find right_top case 4 (%d)\n", dis2);
+				continue;
+			}
+		}
+		
+		// no left and right lane, compare with prevoius 
 
-				// similar with left_top
-				if( (g->m_avg_alpha < m_lane_left_top.m_avg_alpha + 5 ) &&
-					(g->m_avg_alpha > m_lane_left_top.m_avg_alpha - 5 ) &&
-					(g->m_avg_dis < m_lane_left_top.m_avg_dis + 20 ) &&
-					(g->m_avg_dis > m_lane_left_top.m_avg_dis - 20) )
-				{
-					memcpy(&lane_left_top, g, sizeof(lane_left_top));					
-					printf("find left_top case 5\n");
-				}
-				else if( (g->m_avg_alpha < m_lane_right_top.m_avg_alpha + 5 ) &&
-					(g->m_avg_alpha > m_lane_right_top.m_avg_alpha - 5 ) &&
-					(g->m_avg_dis < m_lane_right_top.m_avg_dis + 20 ) &&
-					(g->m_avg_dis > m_lane_right_top.m_avg_dis - 20) )
-				{
-					memcpy(&lane_right_top, g, sizeof(lane_right_top));
-					printf("find right_top case 6\n");
-				}				
-			}			
+		// similar with left_top
+		if( (g->m_avg_alpha < m_lane_left_top.m_avg_alpha + 10 ) &&
+			(g->m_avg_alpha > m_lane_left_top.m_avg_alpha - 10 ) &&
+			(g->m_avg_dis < m_lane_left_top.m_avg_dis + 100 ) &&
+			(g->m_avg_dis > m_lane_left_top.m_avg_dis - 100) )
+		{
+			g->m_type = LANE_TYPE_TOP_LEFT;
+			memcpy(&lane_left_top, g, sizeof(lane_left_top));
+			printf("find left_top case 5\n");
+			continue;
+		}
+		
+		if( (g->m_avg_alpha < m_lane_right_top.m_avg_alpha + 10 ) &&
+			(g->m_avg_alpha > m_lane_right_top.m_avg_alpha - 10 ) &&
+			(g->m_avg_dis < m_lane_right_top.m_avg_dis + 100 ) &&
+			(g->m_avg_dis > m_lane_right_top.m_avg_dis - 100) )
+		{
+			g->m_type = LANE_TYPE_TOP_RIGHT;
+			memcpy(&lane_right_top, g, sizeof(lane_right_top));
+			printf("find right_top case 6\n");
+			continue;
+		}				
 			
  	}
 
@@ -584,7 +597,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		}
 		if( lg->m_count > 0 )
 		{
-			printf("--- %s --- count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n", sz, lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
+			printf("T%lld--- %s --- count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n",s_timer_t::get_inst()->get_ms(), sz, lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
 		}
 		
 	}
@@ -613,6 +626,12 @@ int s_drive_player_t::drive()
 
 	right_height = -1;
 	left_height = -1;
+
+	if( m_lane_right_top.m_count > 0 )
+		right_height = m_lane_right_top.m_avg_dis;
+	
+	if( m_lane_left_top.m_count > 0 )
+		left_height = m_lane_left_top.m_avg_dis;
 	
 	if( m_run_state == DRV_STATE_FWD)
 	{
@@ -632,7 +651,6 @@ int s_drive_player_t::drive()
 				m_next_turn = NEXT_TURN_LEFT;
 				printf("next turn left ...\n");
 			}
-			right_height = m_lane_right_top.m_avg_dis;
 		}
 
 		if( (m_lane_left.m_count > 0) &&  (m_lane_left_top.m_count > 0) )
@@ -650,12 +668,11 @@ int s_drive_player_t::drive()
 				printf("next turn left ###\n");
 			}
 
-			left_height = m_lane_left_top.m_avg_dis;
 		}
 
 		if( m_next_turn == NEXT_TURN_LEFT )
 		{
-			if( ((right_height <= 350 ) && (right_height > 0)) || (m_lane_right.m_count <= 0) )
+			if( ((right_height <= 300 ) && (right_height > 0)) )// || (m_lane_right.m_count <= 0) )
 			{
 				m_next_turn = 0;
 				m_wheel->move_forward_turn(10,25);
@@ -666,7 +683,7 @@ int s_drive_player_t::drive()
 		}
 		else if( m_next_turn == NEXT_TURN_RIGHT )
 		{
-			if( ((left_height <= 350 ) && (left_height > 0)) || (m_lane_left.m_count <= 0) )
+			if( ((left_height <= 300 ) && (left_height > 0)) ) // || (m_lane_left.m_count <= 0) )
 			{
 				m_next_turn = 0;
 				m_wheel->move_forward_turn(25, 10);
@@ -684,7 +701,7 @@ int s_drive_player_t::drive()
 		int64 ms;
 		ms = s_timer_t::get_inst()->get_ms();
 		ms = ms - m_last_time;
-		if( ( ms > 3000) && (m_lane_right.m_count > 0 ) && (abs(m_lane_right.m_avg_alpha) > 65) )
+		if( ( ms > 3000) && (m_lane_right.m_count > 0 ) && (abs(m_lane_right.m_avg_alpha) > 50) )
 		{
 			m_run_state = DRV_STATE_FWD;
 			m_wheel->move_forward(15);
@@ -698,7 +715,7 @@ int s_drive_player_t::drive()
 		int64 ms;
 		ms = s_timer_t::get_inst()->get_ms();
 		ms = ms - m_last_time;
-		if(  ( ms > 3000) && (m_lane_left.m_count > 0 ) &&  (abs(m_lane_left.m_avg_alpha) > 65) )
+		if(  ( ms > 3000) && (m_lane_left.m_count > 0 ) &&  (abs(m_lane_left.m_avg_alpha) > 50) )
 		{
 			m_run_state = DRV_STATE_FWD;
 			m_wheel->move_forward(15);

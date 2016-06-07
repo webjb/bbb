@@ -237,6 +237,11 @@ __msg_loop:
 }
 #endif
 
+
+#define SLEEP_ON	10
+
+#define SLEEP_OFF	10
+
 int s_massage_player_t::run()
 {
 	int count;
@@ -246,16 +251,16 @@ int s_massage_player_t::run()
 //		m_gpio[1]->set_low();
 		if (dir == 0 )
 		{
-			m_gpio[1]->set_low();
+			m_gpio[0]->set_low();
 			dir = 1;
 			
 			printf("high\n");
-			m_gpio[0]->set_high();			
+			m_gpio[1]->set_high();			
 			count = 0;
 			while(!m_quit)
 			{
 				usleep(1000*10);
-				if( count ++ > 10 )
+				if( count ++ > SLEEP_ON )
 					break;
 			}
 			if( m_quit )
@@ -263,36 +268,36 @@ int s_massage_player_t::run()
 			
 			printf("low\n");
 			count = 0;
-			m_gpio[0]->set_low();
+			m_gpio[1]->set_low();
 			while(!m_quit)
 			{
 				usleep(1000*10);
-				if( count ++ > 10 )
+				if( count ++ > SLEEP_OFF )
 					break;
 			}
 		}
 		else
 		{
-			m_gpio[1]->set_high();
+			m_gpio[0]->set_high();
 			dir = 0;
 			
 			printf("low\n");
 			count = 0;
-			m_gpio[0]->set_low();
+			m_gpio[1]->set_low();
 			while(!m_quit)
 			{
 				usleep(1000*10);
-				if( count ++ > 10 )
+				if( count ++ > SLEEP_ON )
 					break;
 			}
 
 			printf("high\n");
-			m_gpio[0]->set_high();			
+			m_gpio[1]->set_high();			
 			count = 0;
 			while(!m_quit)
 			{
 				usleep(1000*10);
-				if( count ++ > 10 )
+				if( count ++ > SLEEP_OFF )
 					break;
 			}
 			if( m_quit )

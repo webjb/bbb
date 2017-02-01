@@ -1,6 +1,11 @@
 // bob sang
 
 #include "leg.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 s_leg_t::s_leg_t()
 {
@@ -31,12 +36,12 @@ int s_leg_t::stop()
 
 int s_leg_t::run()
 {
-	PRINT_INFO("E s_leg_t::run()\n");
+	s_log_info("E s_leg_t::run()\n");
 	while(!m_quit)
 	{
 	}
 	m_quit = 1;
-	PRINT_INFO("X s_leg_t::run()\n");
+	s_log_info("X s_leg_t::run()\n");
 	return 0;
 }
 

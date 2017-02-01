@@ -1,6 +1,12 @@
 // bob sang
 
 #include "wheel.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
+
 enum
 {
 	S_RUN_STATE_WH_NOTHING = 0,
@@ -55,7 +61,7 @@ int s_wheel_t::start()
 
 int s_wheel_t::stop()
 {
-	PRINT_INFO("wheel stop\n");
+	s_log_info("wheel stop\n");
 	m_j1939->set_wheels(0, 0);	
 	
 	s_object_t::stop();
@@ -67,7 +73,7 @@ int s_wheel_t::stop()
 
 int s_wheel_t::turn_left(int speed)
 {
-	PRINT_INFO("wheel:left\n");
+	s_log_info("wheel:left\n");
 	LOCK_MUTEX(m_mutex);
 	m_j1939->set_wheels(speed,0);
 	m_move_state = S_MOVE_STATE_LEFT;
@@ -78,7 +84,7 @@ int s_wheel_t::turn_left(int speed)
 
 int s_wheel_t::turn_right(int speed)
 {
-	PRINT_INFO("wheel:right\n");
+	s_log_info("wheel:right\n");
 	LOCK_MUTEX(m_mutex);
 	m_j1939->set_wheels(0,speed);
 	m_move_state = S_MOVE_STATE_RIGHT;
@@ -90,7 +96,7 @@ int s_wheel_t::turn_right(int speed)
 
 int s_wheel_t::turn_left_2way(int speed)
 {
-	PRINT_INFO("wheel:left_2way\n");
+	s_log_info("wheel:left_2way\n");
 	LOCK_MUTEX(m_mutex);
 //	m_j1939->set_wheels(speed,0);//-speed);
 	m_j1939->set_wheels(speed-100,100-speed);
@@ -102,7 +108,7 @@ int s_wheel_t::turn_left_2way(int speed)
 
 int s_wheel_t::turn_right_2way(int speed)
 {
-	PRINT_INFO("wheel:right_2way\n");
+	s_log_info("wheel:right_2way\n");
 	LOCK_MUTEX(m_mutex);
 //	m_j1939->set_wheels(0, speed);//-speed,speed);
 	m_j1939->set_wheels(100-speed,speed-100);
@@ -115,7 +121,7 @@ int s_wheel_t::turn_right_2way(int speed)
 
 int s_wheel_t::move_forward(int speed)
 {
-	PRINT_INFO("wheel::forward\n");
+	s_log_info("wheel::forward\n");
 	LOCK_MUTEX(m_mutex);
 	m_j1939->set_wheels(-1*speed, -1*speed);
 	m_move_state = S_MOVE_STATE_FORWARD;
@@ -127,7 +133,7 @@ int s_wheel_t::move_forward(int speed)
 
 int s_wheel_t::move_forward_turn(int left_speed, int right_speed)
 {
-	PRINT_INFO("wheel::forward turn left:%d right:%d\n", left_speed, right_speed);
+	s_log_info("wheel::forward turn left:%d right:%d\n", left_speed, right_speed);
 	LOCK_MUTEX(m_mutex);
 	m_j1939->set_wheels(-1*left_speed, -1*right_speed);
 	m_move_state = S_MOVE_STATE_FORWARD;
@@ -139,7 +145,7 @@ int s_wheel_t::move_forward_turn(int left_speed, int right_speed)
 
 int s_wheel_t::move_backward(int speed)
 {
-	PRINT_INFO("wheel::backward\n");
+	s_log_info("wheel::backward\n");
 	LOCK_MUTEX(m_mutex);
 	m_j1939->set_wheels(speed,speed);
 	m_move_state = S_MOVE_STATE_BACKWARD;
@@ -153,7 +159,7 @@ int s_wheel_t::move_stop()
 	LOCK_MUTEX(m_mutex);
 	if( m_move_state != S_MOVE_STATE_STOP )
 	{
-		PRINT_INFO("wheel:move_stop\n");
+		s_log_info("wheel:move_stop\n");
 		m_j1939->set_wheels(0, 0);
 		m_move_state = S_MOVE_STATE_STOP;
 		m_last_cmd_time = GET_MS();
@@ -185,13 +191,7 @@ int s_wheel_t::is_position_lost()
 
 int s_wheel_t::start_search(int x)
 {
-//	int alpha;
-//	s_ball_postion_t pos;
-	
-//	m_eye->get_ball_position(&pos);
-//	alpha = pos.m_alpha;
-
-	PRINT_INFO("WHEEL_START_SEARCH alpha1:%d\n", x);
+	s_log_info("WHEEL_START_SEARCH alpha1:%d\n", x);
 	m_run_state = S_RUN_STATE_WH_SEARCHING;	
 	
 	if( LINE_BALL(x) )
@@ -221,7 +221,7 @@ int s_wheel_t::stop_search()
 
 int s_wheel_t::start_move()
 {
-	PRINT_INFO("wheel::start_move\n");
+	s_log_info("wheel::start_move\n");
 	m_run_state = S_RUN_STATE_WH_MOVING;	
 	m_move_state = S_MOVE_STATE_NOTHING;
 	m_func_state = S_FUNC_STATE_MOVE_TO_BALL;
@@ -230,7 +230,7 @@ int s_wheel_t::start_move()
 
 int s_wheel_t::stop_move()
 {
-	PRINT_INFO("wheel::stop_move\n");
+	s_log_info("wheel::stop_move\n");
 	m_run_state = S_RUN_STATE_WH_NOTHING;
 	move_stop();
 	m_alpha = 0;
@@ -241,10 +241,9 @@ int s_wheel_t::stop_move()
 	return 0;
 }
 
-
 int s_wheel_t::start_aim_door()
 {
-	PRINT_INFO("wheel::start_aim_door\n");
+	s_log_info("wheel::start_aim_door\n");
 	m_run_state = S_RUN_STATE_WH_AIMING_DOOR;
 	m_wh_state = S_WH_STATE_NOTHING;
 	m_move_state = S_MOVE_STATE_NOTHING;
@@ -254,7 +253,7 @@ int s_wheel_t::start_aim_door()
 
 int s_wheel_t::stop_aim_door()
 {
-	PRINT_INFO("wheel::stop_aim_door\n");
+	s_log_info("wheel::stop_aim_door\n");
 	m_run_state = S_RUN_STATE_WH_NOTHING;
 	move_stop();
 	m_alpha = 0;
@@ -317,7 +316,7 @@ int s_wheel_t::do_search()
 	}
 	if( alpha <110 && alpha > 70)
 	{
-		PRINT_INFO("%s WHEEL found ball start move alpha:%d...\n", TIME_STAMP(),  alpha);
+		s_log_info("%s WHEEL found ball start move alpha:%d...\n", TIME_STAMP(),  alpha);
 		move_stop();
 		m_run_state = S_RUN_STATE_WH_SEARCHED;
 	}
@@ -346,10 +345,9 @@ int s_wheel_t::do_move_to_ball()
 	
 	time_ms = GET_MS();
 
-
 	if( g_last_alpha != alpha && g_last_z != z)
 	{
-		PRINT_INFO("%s alpha:%d z:%d\n", TIME_STAMP(), alpha, z);
+		s_log_info("%s alpha:%d z:%d\n", TIME_STAMP(), alpha, z);
 		g_last_alpha = alpha;
 		g_last_z = z;
 	}
@@ -360,12 +358,12 @@ int s_wheel_t::do_move_to_ball()
 	}
 	if( (alpha < KICK_MAX_ANGLE && alpha > KICK_MIN_ANGLE ) &&	(z <= KICK_DISTANCE && z > 1 ) )
 	{
-		PRINT_INFO("pos reached alpha:%d z:%d\n", alpha, z);
+		s_log_info("pos reached alpha:%d z:%d\n", alpha, z);
 		move_stop();
 		m_wh_state = S_WH_STATE_STOP;
 		if( m_func_state == S_FUNC_STATE_AIM_DOOR )
 		{
-			PRINT_INFO("again to aim to door\n");
+			s_log_info("again to aim to door\n");
 			m_run_state = S_RUN_STATE_WH_AIMING_DOOR;
 			m_wh_state = S_WH_STATE_NOTHING;
 			m_move_state = S_MOVE_STATE_NOTHING;			
@@ -379,7 +377,7 @@ int s_wheel_t::do_move_to_ball()
 	{
 		if( alpha > 180 )
 		{
-			PRINT_INFO("move over ball alpha:%d z:%d\n", alpha, z);
+			s_log_info("move over ball alpha:%d z:%d\n", alpha, z);
 			move_stop();
 			m_wh_state = S_WH_STATE_REST;
 			m_last_cmd_time = time_ms;
@@ -424,7 +422,7 @@ int s_wheel_t::do_move_to_ball()
 		if( time_ms > m_last_cmd_time + 1000)
 		{
 			m_wh_state = S_WH_STATE_NOTHING;
-			PRINT_INFO("reset done, nothing\n");
+			s_log_info("reset done, nothing\n");
 			return 0;
 		}
 	}
@@ -450,7 +448,7 @@ int s_wheel_t::do_move_to_ball()
 			move_stop();
 			m_wh_state = S_WH_STATE_REST;
 			m_last_cmd_time = time_ms;
-			PRINT_INFO("reset start\n");
+			s_log_info("reset start\n");
 			return 0;
 		}
 	}
@@ -497,7 +495,7 @@ int s_wheel_t::do_aim_to_door()
 		{
 	
 			move_stop();
-			PRINT_INFO("door aimed\n");
+			s_log_info("door aimed\n");
 			m_run_state = S_RUN_STATE_WH_DOOR_AIMED;
 			return 0;
 		}
@@ -506,13 +504,13 @@ int s_wheel_t::do_aim_to_door()
 	{		
 		if( dpos.m_width <= 0)
 		{
-			PRINT_INFO("\naim to door lost door\n");
+			s_log_info("\naim to door lost door\n");
 			move_stop();
 			m_eye->search(10);
 			m_wh_state = S_WH_STATE_AIM_SEARCH_DOOR;
 			return 0;
 		}
-		PRINT_INFO("turn door x:%d y:%d\n", dpos.m_x, dpos.m_y);
+		s_log_info("turn door x:%d y:%d\n", dpos.m_x, dpos.m_y);
 		if( dpos.m_x <= -50 )
 		{
 			if( m_wh_state != S_WH_STATE_AIM_LEFT)
@@ -569,7 +567,7 @@ int s_wheel_t::do_aim_to_door()
 		if( time_ms > m_last_cmd_time + 2000 )
 		{
 			move_stop();
-			PRINT_INFO("drift done\n");
+			s_log_info("drift done\n");
 			if( z < 0 )
 			{
 				m_wh_state = S_WH_STATE_NOTHING;
@@ -590,7 +588,7 @@ int s_wheel_t::do_aim_to_door()
 
 int s_wheel_t::run()
 {
-	PRINT_INFO("E s_wheel_t::run()\n");
+	s_log_info("E s_wheel_t::run()\n");
 	
 	m_last_cmd_time = s_timer_t::get_inst()->get_ms();
 	while(!m_quit)
@@ -613,11 +611,11 @@ int s_wheel_t::run()
 		else if( m_run_state == S_RUN_STATE_WH_DOOR_AIMED )
 		{
 		}
-		usleep(1000*10);
+		s_sleep_ms(10);
 	}
 	m_quit = 1;
 	
-	PRINT_INFO("X s_wheel_t::run()\n");
+	s_log_info("X s_wheel_t::run()\n");
 	return 0;
 }
 

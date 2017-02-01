@@ -1,4 +1,9 @@
 #include "servo.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 // period unit is ns
 // duty unit is ns
@@ -81,7 +86,7 @@ int s_servo_t::power_on()
 {
 	if( m_id >= 8)
 	{
-		printf("wrong id %d\n", m_id);
+		s_log_info("wrong id %d\n", m_id);
 		return -1;
 	}
 
@@ -112,7 +117,7 @@ int s_servo_t::standby(int speed)
 		power_on();
 	
 	m_next_duty = POS_TO_DUTY(m_standby_pos);
-	PRINT_INFO("standby id:%d duty:%d\n", m_id, m_next_duty);
+	s_log_info("standby id:%d duty:%d\n", m_id, m_next_duty);
 	m_cur_duty = m_next_duty;
 	pwm_set_duty(m_cur_duty);
 
@@ -126,27 +131,27 @@ int s_servo_t::is_standby_done()
 
 int s_servo_t::move_to(int pos, int speed)
 {
-	PRINT_INFO("s_servo_t::move_to pos:%d duty:%d speed:%d\n", pos, POS_TO_DUTY(pos), speed);
+	s_log_info("s_servo_t::move_to pos:%d duty:%d speed:%d\n", pos, POS_TO_DUTY(pos), speed);
 	if( m_id >= 8)
 	{
-		printf("wrong id %d\n", m_id);
+		s_log_info("wrong id %d\n", m_id);
 		return -1;
 	}
 
 	if( pos < m_min_pos || pos > m_max_pos)
 	{
-		PRINT_INFO("move_to ERROR pos (%d) < min (%d) or > max (%d)\n", pos, m_min_pos, m_max_pos);
+		s_log_info("move_to ERROR pos (%d) < min (%d) or > max (%d)\n", pos, m_min_pos, m_max_pos);
 		return -1;
 	}
 
 	if( POS_TO_DUTY(pos) == m_cur_duty)
 	{
-		PRINT_INFO("same pos do nothing\n");
+		s_log_info("same pos do nothing\n");
 		return 0;
 	}
 	if( speed == 0 )
 	{
-		PRINT_INFO("ERROR speed is 0\n");
+		s_log_info("ERROR speed is 0\n");
 		return 0;
 	}
 	
@@ -197,9 +202,7 @@ int s_servo_t::stop()
 
 int s_servo_t::run()
 {
-//	int64 ct;
-//	int delt;
-	PRINT_INFO("E s_servo_t::run id:%d\n", m_id);
+	s_log_info("E s_servo_t::run id:%d\n", m_id);
 	while ( !m_quit)
 	{				
 		if( m_state != S_STATE_RUN )
@@ -220,11 +223,11 @@ int s_servo_t::run()
 
 		pwm_set_duty(m_cur_duty);
 __servo_loop:		
-		usleep(1000*50);
+		s_sleep_ms(50);
 	}
 	m_quit = 2;
 	
-	PRINT_INFO("X s_servo_t::run\n");	
+	s_log_info("X s_servo_t::run\n");	
 	return 0;
 }
 

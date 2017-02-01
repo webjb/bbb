@@ -1,6 +1,11 @@
 // bob sang robot
 
 #include "canbus.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 #define DEBUG_ENABLE 0
 
@@ -24,13 +29,13 @@ int s_can_t::init()
 	int ret;
 	struct sockaddr_can addr;
 	struct ifreq ifr;
-	PRINT_INFO("s_can_t::init\n");
+	s_log_info("s_can_t::init\n");
 	
 	/* open socket */
 	m_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if( m_socket < 0) 
 	{
-		PRINT_INFO("open CAN socket ERROR %d\n", m_socket);
+		s_log_info("open CAN socket ERROR %d\n", m_socket);
 		return m_socket;
 	}
 
@@ -41,7 +46,7 @@ int s_can_t::init()
 	ret = ioctl(m_socket, SIOCGIFINDEX, &ifr);
 	if( ret < 0) 
 	{
-		PRINT_INFO("SIOCGIFINDEX ERROR %d\n", ret);
+		s_log_info("SIOCGIFINDEX ERROR %d\n", ret);
 		return ret;
 	}
 	addr.can_ifindex = ifr.ifr_ifindex;
@@ -56,7 +61,7 @@ int s_can_t::init()
 	ret = bind(m_socket, (struct sockaddr *)&addr, sizeof(addr));
 	if( ret < 0) 
 	{
-		PRINT_ERROR("bind ERROR %d\n", ret);
+		s_log_info("bind ERROR %d\n", ret);
 		return ret;
 	}
 	return 0;
@@ -81,7 +86,7 @@ int s_can_t::run()
 	{
 //		J1939_MESSAGE msg;
 //        receive(&msg);
-		usleep(1000*100);
+		s_sleep_ms(100);
 	}
 	m_quit = 2;
 	return 0;
@@ -106,7 +111,7 @@ int s_can_t::send(J1939_MESSAGE * msg)
 		init();
 		if( m_socket < 0 )
 		{
-			PRINT_ERROR("send ERROR can't init socket\n");
+			s_log_info("send ERROR can't init socket\n");
 			return -1;
 		}
 	}
@@ -138,7 +143,7 @@ int s_can_t::send(J1939_MESSAGE * msg)
 	len = write(m_socket, &frame, sizeof(frame));
 	if (len == -1) 
 	{
-		PRINT_INFO("send ERROR (%d)\n", errno);
+		s_log_info("send ERROR (%d)\n", errno);
 		switch (errno) 
 		{
 			case ENOBUFS: 
@@ -215,20 +220,19 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 		init();
 		if( m_socket < 0 )
 		{
-			PRINT_ERROR("send ERROR can't init socket\n");
+			s_log_info("send ERROR can't init socket\n");
 			return -1;
 		}
 	}
 
 	if ((nbytes = read(m_socket, &frame, sizeof(struct can_frame))) < 0) 
 	{
-		printf("read error %d\n", nbytes);
+		s_log_info("read error %d\n", nbytes);
 		return -1;
 	} 
 	else 
 	{
 		int len;
-//		printf("read count %d\n", nbytes);
 		if (frame.can_id & CAN_EFF_FLAG)
 			n = snprintf(buf, BUF_SIZ, "<0x%08x> ", frame.can_id & CAN_EFF_MASK);
 		else
@@ -241,7 +245,7 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 		if (frame.can_id & CAN_RTR_FLAG)
 			n += snprintf(buf + n, BUF_SIZ - n, "remote request");
 #if DEBUG_ENABLE
-		printf("recv: cnt:%d %s ---n", nbytes, buf);
+		s_log_info("recv: cnt:%d %s ---n", nbytes, buf);
 #endif
 		n = 0;
 		
@@ -251,11 +255,11 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 		{
 			msg->Array[j] = buf[len-j-1];
 #if DEBUG_ENABLE			
-			printf("%x ", msg->Array[j]);
+			s_log_info("%x ", msg->Array[j]);
 #endif
 		}
 #if DEBUG_ENABLE		
-		printf("\n");
+		s_log_info("\n");
 #endif
 		memcpy(msg->Msg.Data, frame.data, frame.can_dlc);
 	}

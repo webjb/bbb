@@ -1,8 +1,12 @@
 //
 #include "app.h"
 #include "message.h"
-
+#include "log.h"
+#include "utilities.h"
 #include <math.h>
+
+using namespace s_log;
+using namespace s_utilities;
 
 s_app_t::s_app_t()
 {
@@ -56,7 +60,7 @@ int s_app_t::start()
 
 int s_app_t::stop()
 {
-	PRINT_INFO("app stop\n");
+	s_log_info("app stop\n");
 	if( !is_started() )
 		return 0;
 	s_object_t::stop();
@@ -103,7 +107,7 @@ int s_app_t::run_keyboard()
 	while(1)
 	{
 		ch = getchar();
-		PRINT_INFO("ch=%c\n", ch);
+		s_log_info("ch=%c\n", ch);
 		switch(ch)
 		{
 			case 'a':
@@ -162,11 +166,11 @@ int s_app_t::run_keyboard()
 				m_wheel->move_stop();
 				break;			
 			case 'f':
-				PRINT_INFO("FORWARD: speed:%d\n", wheel_speed);
+				s_log_info("FORWARD: speed:%d\n", wheel_speed);
 				m_wheel->move_forward(wheel_speed);
 				break;
 			case 'b':
-				PRINT_INFO("BACKWARD: speed:%d\n", wheel_speed);
+				s_log_info("BACKWARD: speed:%d\n", wheel_speed);
 				m_wheel->move_backward(wheel_speed);
 				break;
 			case 'e':
@@ -222,10 +226,10 @@ int s_app_t::run()
 	 	switch( m_run_state )
 		{
 	 	}
-		usleep(1000*50);
+		s_sleep_ms(50);
 	}
 	m_quit = 1;
-	PRINT_INFO("s_app_t::run EXIT quit:%d\n", this->m_quit);
+	s_log_info("s_app_t::run EXIT quit:%d\n", this->m_quit);
 	if( m_exit == 1 )
 	{
 		m_eye->stop();

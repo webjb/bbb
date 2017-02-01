@@ -2,8 +2,13 @@
 
 #include "msgPlayer.h"
 
-#define MSG_MAX_SERVOS 3
+#include "log.h"
+#include "utilities.h"
 
+using namespace s_log;
+using namespace s_utilities;
+
+#define MSG_MAX_SERVOS 3
 
 s_massage_player_t::s_massage_player_t()
 {
@@ -53,7 +58,7 @@ int s_massage_player_t::add_command(int servo_id, int timer_ms, int pos, int spe
 
 	time_ms = s_timer_t::get_inst()->get_ms();
 	
-	memset(&cmd, 0, sizeof(s_msg_command_t));
+	s_memset(&cmd, 0, sizeof(s_msg_command_t));
 	cmd.m_start_time_ms = time_ms + timer_ms;
 	cmd.m_servo_id = servo_id;
 	cmd.m_command = S_CMD_MOVE_TO;
@@ -197,7 +202,7 @@ int s_massage_player_t::stop()
 	m_gpio[0]->stop();	
 	m_gpio[1]->stop();
 
-	printf("msgPlayer stop done\n");
+	s_log_info("msgPlayer stop done\n");
 	
 	LOCK_MUTEX(m_mutex);
 	m_cmd_list.clear();
@@ -254,24 +259,24 @@ int s_massage_player_t::run()
 			m_gpio[0]->set_low();
 			dir = 1;
 			
-			printf("high\n");
+			s_log_info("high\n");
 			m_gpio[1]->set_high();			
 			count = 0;
 			while(!m_quit)
 			{
-				usleep(1000*10);
+				s_sleep_ms(10);
 				if( count ++ > SLEEP_ON )
 					break;
 			}
 			if( m_quit )
 				break;
 			
-			printf("low\n");
+			s_log_info("low\n");
 			count = 0;
 			m_gpio[1]->set_low();
 			while(!m_quit)
 			{
-				usleep(1000*10);
+				s_sleep_ms(10);
 				if( count ++ > SLEEP_OFF )
 					break;
 			}
@@ -281,22 +286,22 @@ int s_massage_player_t::run()
 			m_gpio[0]->set_high();
 			dir = 0;
 			
-			printf("low\n");
+			s_log_info("low\n");
 			count = 0;
 			m_gpio[1]->set_low();
 			while(!m_quit)
 			{
-				usleep(1000*10);
+				s_sleep_ms(10);
 				if( count ++ > SLEEP_ON )
 					break;
 			}
 
-			printf("high\n");
+			s_log_info("high\n");
 			m_gpio[1]->set_high();			
 			count = 0;
 			while(!m_quit)
 			{
-				usleep(1000*10);
+				s_sleep_ms(10);
 				if( count ++ > SLEEP_OFF )
 					break;
 			}
@@ -306,7 +311,7 @@ int s_massage_player_t::run()
 		}
 		
 	}
-	printf("\n\n------------------quit run-------\n");
+	s_log_info("\n\n------------------quit run-------\n");
 	m_quit = 1;
 	m_gpio[0]->set_low();
 	m_gpio[1]->set_low();

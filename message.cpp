@@ -2,6 +2,11 @@
 
 #include "message.h"
 #include "app.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 s_message_t::s_message_t()
 {
@@ -136,15 +141,15 @@ int s_message_t::tcp_parser()
 	switch ( cmd )
 	{
 		case S_CMD_ARM_KICK:
-			PRINT_INFO("cmd: ARM_KICK\n");
+			s_log_info("cmd: ARM_KICK\n");
 			s_app->arm_kick();
 			break;
 		case S_CMD_ARM_STANDBY:
-			PRINT_INFO("cmd: ARM_STANDBY\n");
+			s_log_info("cmd: ARM_STANDBY\n");
 			s_app->arm_standby();
 			break;
 		case S_CMD_ARM_POWER_OFF:
-			PRINT_INFO("cmd: ARM_POWER_OFF\n");
+			s_log_info("cmd: ARM_POWER_OFF\n");
 			s_app->arm_power_off();
 			break;
 		case S_CMD_CAM_BALL_LOCATION:

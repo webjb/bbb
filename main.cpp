@@ -2,23 +2,26 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include "servo.h"
-//#include "brain.h"
 #include "app.h"
 
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 void signal_process(int signo, siginfo_t *siginfo, void *context)
 {
-	PRINT_INFO("signo:%d\n", signo);
+	s_log_info("signo:%d\n", signo);
 	switch(signo)
 	{
 	case SIGHUP:
-		PRINT_INFO("SIGHUP signal\n");
+		s_log_info("SIGHUP signal\n");
 		break;
 	case SIGINT:
 	{
 		s_app_t * s_app = s_app_t::get_app();
-		PRINT_INFO("SIGINT signal\n");
+		s_log_info("SIGINT signal\n");
 		if( s_app)
 		{
 			s_app->stop();
@@ -27,38 +30,38 @@ void signal_process(int signo, siginfo_t *siginfo, void *context)
 	}
 		break;
 	case SIGQUIT:
-		PRINT_INFO("SIGQUIT signal\n");
+		s_log_info("SIGQUIT signal\n");
 		break;
 	case SIGILL:
-		PRINT_INFO("SIGILL signal\n");
+		s_log_info("SIGILL signal\n");
 		break;
 	case SIGTRAP:
-		PRINT_INFO("SIGTRAP signal\n");
+		s_log_info("SIGTRAP signal\n");
 		break;
 	case SIGIOT: //SIGABRT
-		PRINT_INFO("SIGIOT signal.\n");
+		s_log_info("SIGIOT signal.\n");
 		exit(signo);
 		break;
 	case SIGFPE:
-		PRINT_INFO("SIGFPE signal.\n");
+		s_log_info("SIGFPE signal.\n");
 		exit(signo);
 		break;
 	case SIGBUS:
-		PRINT_INFO("SIGBUS signal.\n");
+		s_log_info("SIGBUS signal.\n");
 		exit(signo);
 		break;
 	case SIGSEGV:
-		PRINT_INFO("SIGSEGV signal.\n");
+		s_log_info("SIGSEGV signal.\n");
 		exit(signo);
 		break;
 	case SIGSYS:
-		PRINT_INFO("SIGSYS signal.\n");
+		s_log_info("SIGSYS signal.\n");
 		break;
 	case SIGPIPE:
-		PRINT_INFO("SIGPIPE signal.\n");
+		s_log_info("SIGPIPE signal.\n");
 		break;
 	default:
-		printf("XCT get unknown signal: %d.\n", signo);
+		s_log_info("XCT get unknown signal: %d.\n", signo);
 		exit(signo);
 		break;
 	}
@@ -72,7 +75,7 @@ void ttt()
 
 	get_angle(100, -75, &angle, &distance);
 
-	PRINT_INFO("angle=%d dis=%d\n", angle, distance);
+	s_log_info("angle=%d dis=%d\n", angle, distance);
 }
 
 int main()
@@ -96,11 +99,11 @@ int main()
 //	s_app->start();
 	while( !s_app->is_quit())
 	{
-		usleep(1000*100);
+		s_sleep_ms(100);
 	}
 
 	delete s_app;
-	printf("EXIT\n");
+	s_log_info("EXIT\n");
 	
 	
 	return 0;

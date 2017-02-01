@@ -1,4 +1,9 @@
 #include "gpio.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 s_gpio_t::s_gpio_t(int io_id, int bit)
 {
@@ -15,7 +20,7 @@ int s_gpio_t::power_on()
 {
 	char sz[280];
 	int id;
-	printf("gpio power on\n");
+	s_log_info("gpio power on\n");
 	id = m_id*32 + m_bit;
 	sprintf(sz, "echo %d > /sys/class/gpio/export", id);
 	SYSTEM_CALL(sz);
@@ -34,7 +39,7 @@ int s_gpio_t::power_off()
 	sprintf(sz, "echo %d > /sys/class/gpio/unexport", id);
 	SYSTEM_CALL(sz);
 
-	printf("gpio power off %s\n", sz);
+	s_log_info("gpio power off %s\n", sz);
 	return 0;
 }
 
@@ -51,7 +56,7 @@ int s_gpio_t::set_high()
 	sprintf(sz, "echo 0 > /sys/class/gpio/gpio%d/value", id);
 	SYSTEM_CALL(sz);
 
-	printf("gpio high: %s\n", sz);
+	s_log_info("gpio high: %s\n", sz);
 	return 0;
 }
 
@@ -68,14 +73,14 @@ int s_gpio_t::set_low()
 	sprintf(sz, "echo 1 > /sys/class/gpio/gpio%d/value", id);
 	SYSTEM_CALL(sz);
 
-	printf("gpio low: %s\n", sz);
+	s_log_info("gpio low: %s\n", sz);
 	return 0;
 	
 }
 
 int s_gpio_t::start()
 {
-	printf("gpio start id:%d bit:%d\n", m_id, m_bit);
+	s_log_info("gpio start id:%d bit:%d\n", m_id, m_bit);
 	s_object_t::start();
 	power_on();
 	return 0;
@@ -83,7 +88,7 @@ int s_gpio_t::start()
 
 int s_gpio_t::stop()
 {
-	printf("gpio stop id:%d bit:%d\n", m_id, m_bit);
+	s_log_info("gpio stop id:%d bit:%d\n", m_id, m_bit);
 //	power_off();
 	s_object_t::stop();
 	return 0;
@@ -91,14 +96,14 @@ int s_gpio_t::stop()
 
 int s_gpio_t::run()
 {
-	PRINT_INFO("E s_gpio_t::run id:%d\n", m_id);
+	s_log_info("E s_gpio_t::run id:%d\n", m_id);
 	while ( !m_quit)
 	{				
-		usleep(1000*50);
+		s_sleep_ms(50);
 	}
 	m_quit = 2;
 	
-	PRINT_INFO("X s_gpio_t::run\n");	
+	s_log_info("X s_gpio_t::run\n");	
 	return 0;
 }
 

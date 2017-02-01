@@ -61,7 +61,7 @@ typedef struct s_line_
 	int m_lr;	
 } s_line;
 
-typedef struct s_line_group_
+struct s_line_group
 {
 	int m_count;
 	s_line m_lines[40];
@@ -73,8 +73,21 @@ typedef struct s_line_group_
 	s_point_t m_point_top;
 
 	int m_type;
-	
-} s_line_group;
+
+    s_line_group & operator = (s_line_group * x)
+    {    
+        memcpy(this, x, sizeof(s_line_group));
+        return *this;
+//        return x;
+    }
+    s_line_group & operator = (s_line_group & x)
+    {    
+//        memcpy(this, x, sizeof(s_line_group));
+        return x;
+//        return x;
+    }
+    
+};
 
 
 class s_drive_player_t : public s_object_t

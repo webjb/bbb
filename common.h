@@ -41,8 +41,8 @@ int64 get_current_time();	// us
 	system(x); \
 }
 
-#define PRINT_INFO printf
-#define PRINT_ERROR printf
+//#define PRINT_INFO printf
+//#define PRINT_ERROR printf
 
 #define FOUND_BALL(x, y) ( (x!= 0 ) || ( y != 0) )
 

@@ -1,11 +1,16 @@
 //bob sang
 #include "tcp.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 #define LISTENQ        (1024)   /*  Backlog for listen()   */
 
 s_tcp_t::s_tcp_t(int port)
 {
-	PRINT_INFO("s_tcp_t::s_tcp_t() port:%d server\n", port);
+	s_log_info("s_tcp_t::s_tcp_t() port:%d server\n", port);
 	m_is_server = 1; // it is client
 	m_port = port;
 
@@ -15,7 +20,7 @@ s_tcp_t::s_tcp_t(int port)
 
 s_tcp_t::s_tcp_t(int port, char * ipaddr)
 {
-	PRINT_INFO("s_tcp_t::s_tcp_t port:%d addr:%s clint\n", port, ipaddr);
+	s_log_info("s_tcp_t::s_tcp_t port:%d addr:%s clint\n", port, ipaddr);
 	m_is_server = 0;
 	m_port = port;
 	strcpy(m_ipaddr, ipaddr);		
@@ -39,29 +44,29 @@ int s_tcp_t::start_server()
 	int flags;
 	int ret;
 	struct    sockaddr_in servaddr;
-	PRINT_INFO("start_server \n");
+	s_log_info("start_server \n");
 	m_socket_id = socket(AF_INET, SOCK_STREAM, 0);
 	if( m_socket_id < 0 )
 	{
-		PRINT_ERROR("open new socket ERROR\n");
+		s_log_info("open new socket ERROR\n");
 	}
 	// set it to nonblocking
 	flags = fcntl(m_socket_id, F_GETFL, 0);
  	if (flags < 0) 
  	{
- 		PRINT_ERROR("ERROR start_server() can't get non-block %d\n", flags);
+ 		s_log_info("ERROR start_server() can't get non-block %d\n", flags);
 		return -1;
  	}
   	flags |= O_NONBLOCK;
    	ret = fcntl(m_socket_id, F_SETFL, flags);
 	if( ret != 0 )
    	{
-   		PRINT_ERROR("ERROR start_server() can't set non-block %d errno(%d)\n", ret, errno);
+   		s_log_info("ERROR start_server() can't set non-block %d errno(%d)\n", ret, errno);
 		return ret;
    	}
 
 
-	memset(&servaddr, 0, sizeof(servaddr));
+	s_memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port        = htons(m_port);
@@ -71,13 +76,13 @@ int s_tcp_t::start_server()
 
     if ( bind(m_socket_id, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) 
 	{
-		PRINT_ERROR("ECHOSERV: Error calling bind()\n");
+		s_log_info("ECHOSERV: Error calling bind()\n");
 		return -1;
     }
 
     if ( listen(m_socket_id, LISTENQ) < 0 ) 
 	{
-		PRINT_ERROR("ECHOSERV: Error calling listen()\n");
+		s_log_info("ECHOSERV: Error calling listen()\n");
 		return -1;
     }
 	return 0;	
@@ -114,7 +119,7 @@ int s_tcp_t::run_server(int socket_id)
 	char * buffer;
 	int len;
 	buffer = new char[1024];
-	PRINT_INFO("run_server ENTER\n");
+	s_log_info("run_server ENTER\n");
 	while( !m_quit)
 	{
 		len = read(socket_id, buffer, 1024);
@@ -122,7 +127,7 @@ int s_tcp_t::run_server(int socket_id)
 		{
 			if( errno == EINTR)
 			{
-				usleep(1000);
+				s_sleep_ms(1);
 				continue;
 			}
 			else
@@ -139,7 +144,7 @@ int s_tcp_t::run_server(int socket_id)
 				buf.m_buffer = buffer;
 				buffer[len] = 0;
 				buf.m_length = len;
-				PRINT_INFO("recv: %s\n", buffer);
+				s_log_info("recv: %s\n", buffer);
 				m_callback(m_callback_parent, &buf);
 			}
 			
@@ -149,7 +154,7 @@ int s_tcp_t::run_server(int socket_id)
 	
 	if ( close(socket_id) < 0 ) 
 	{
-		PRINT_ERROR("ERROR calling close()\n");
+		s_log_info("ERROR calling close()\n");
 	}
 	delete buffer;
 //	PRINT_INFO("run_server() EXIT\n");
@@ -159,7 +164,7 @@ int s_tcp_t::run_server(int socket_id)
 int s_tcp_t::run()
 {
 	int       conn_s;
-	PRINT_INFO("s_tcp_t::run() ENTER\n");
+	s_log_info("s_tcp_t::run() ENTER\n");
 	while ( !m_quit)
 	{
 		if( m_is_server )
@@ -174,11 +179,11 @@ int s_tcp_t::run()
 				}
 				else
 				{
-					PRINT_ERROR("accept() closed %d\n", errno);					
+					s_log_info("accept() closed %d\n", errno);					
 					break;
 				}
 			}
-			PRINT_INFO("find new client connected\n");
+			s_log_info("find new client connected\n");
 			s_tcp_connection_t * connection;
 			connection = new s_tcp_connection_t;
 			connection->m_parent = this;
@@ -187,7 +192,7 @@ int s_tcp_t::run()
 		}
 	}
 	m_quit = 2;
-	PRINT_INFO("s_tcp_t::run() EXIT\n");
+	s_log_info("s_tcp_t::run() EXIT\n");
 	return 0;
 }
 

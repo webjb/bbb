@@ -123,6 +123,10 @@ private:
 	s_line_group m_lane_left_top;
 	s_line_group m_lane_right_top;
 
+	
+    signal_t m_loc_signal;
+    mutex_t m_loc_mutex;
+
 };
 
 #endif

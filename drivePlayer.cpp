@@ -17,10 +17,16 @@ s_drive_player_t::s_drive_player_t()
 	s_memset(&m_lane_right, 0, sizeof(m_lane_right));
 	s_memset(&m_lane_left_top, 0, sizeof(m_lane_left_top));
 	s_memset(&m_lane_right_top, 0, sizeof(m_lane_right_top));
+
+    CREATE_MUTEX(m_mutex);	
+    CREATE_SIGNAL(m_loc_signal, 0);	
 }
 
 s_drive_player_t::~s_drive_player_t()
 {
+	DESTROY_SIGNAL(m_loc_signal);
+    DESTROY_MUTEX(m_mutex);
+
 }
 
 s_drive_player_t* s_drive_player_t::get_inst()
@@ -903,7 +909,8 @@ int s_drive_player_t::on_location(char * msg)
 	if( !is_started() )
 		return 0;
 
-	drive();
+//	drive();
+	SIGNAL(m_loc_signal);
 
 	return 0;
 }
@@ -927,11 +934,21 @@ int s_drive_player_t::stop()
 
 int s_drive_player_t::run()
 {
+	timespec abstime;
+	int ret;
 	while(!m_quit)
 	{
-		LOCK_MUTEX(m_mutex);
-		UNLOCK_MUTEX(m_mutex);
-		s_sleep_ms(20);
+		//	struct timeval current;
+		clock_gettime(CLOCK_REALTIME, &abstime);
+	//	abstime.tv_sec += 1;	// timed out 6 seconds
+		abstime.tv_nsec += 1000*1000*10;
+			
+		LOCK_MUTEX(m_loc_mutex);
+		ret = WAIT_SIGNAL_TIMEOUT(m_loc_signal, m_loc_mutex, abstime);
+		UNLOCK_MUTEX(m_loc_mutex);
+
+		drive();
+//		s_sleep_ms(20);
 	}
 	m_quit = 1;
 	return 0;

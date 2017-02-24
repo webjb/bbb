@@ -631,39 +631,45 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 	return 0;
 }
 
+int s_drive_player_t::no_lane_showed()
+{
+	return  ((m_lane_left.m_count <= 0) 
+			&& (m_lane_right.m_count <= 0)
+			&& (m_lane_left_top.m_count <= 0)
+			&& (m_lane_right_top.m_count <= 0));
+}
+
 int s_drive_player_t::drive()
 {
-	int right_height;
-	int left_height;
+	int right_up;
+	int left_up;
 	
- 	if( (m_lane_left.m_count <= 0) 
-		&& (m_lane_right.m_count <= 0)
-		&& (m_lane_left_top.m_count <= 0)
-		&& (m_lane_right_top.m_count <= 0)
-		)
+ 	if( no_lane_showed() )
 	{
 		m_wheel->move_stop();
-		m_run_state = DRV_STATE_STOP;
-		
-		s_log_info("drive stop\n");
+		if( m_run_state != DRV_STATE_STOP )
+		{	
+			m_run_state = DRV_STATE_STOP;			
+			s_log_info("drive stopped\n");
+		}
 		return 0;
 	}
 
+	// see one or multiple lanes
+	right_up = -1;
+	left_up = -1;
 
-	right_height = -1;
-	left_height = -1;
-
-	if( m_lane_right_top.m_count > 0 )
-		right_height = m_lane_right_top.m_avg_dis;
+	if( m_lane_right_top.has_lane() )
+		right_up = m_lane_right_top.m_avg_dis;
 	
-	if( m_lane_left_top.m_count > 0 )
-		left_height = m_lane_left_top.m_avg_dis;
+	if( m_lane_left_top.has_lane() )
+		left_up = m_lane_left_top.m_avg_dis;
 	
 	if( m_run_state == DRV_STATE_FWD)
 	{
 		int d1;
 		int d2;
-		if( (m_lane_right.m_count > 0) &&  (m_lane_right_top.m_count > 0) )
+		if( m_lane_right.has_lane()  &&  m_lane_right_top.has_lane()  )
 		{
 			d1 = abs(m_lane_right_top.m_point_bot.m_x - m_lane_right.m_point_top.m_x);
 			d2 = abs(m_lane_right_top.m_point_top.m_x - m_lane_right.m_point_top.m_x);
@@ -679,7 +685,7 @@ int s_drive_player_t::drive()
 			}
 		}
 
-		if( (m_lane_left.m_count > 0) &&  (m_lane_left_top.m_count > 0) )
+		if( m_lane_left.has_lane() && m_lane_left_top.has_lane() )
 		{
 			d1 = abs(m_lane_left_top.m_point_bot.m_x - m_lane_left.m_point_top.m_x);
 			d2 = abs(m_lane_left_top.m_point_top.m_x - m_lane_left.m_point_top.m_x);
@@ -693,29 +699,28 @@ int s_drive_player_t::drive()
 				m_next_turn = NEXT_TURN_LEFT;
 				s_log_info("next turn left ###\n");
 			}
-
 		}
 
 		if( m_next_turn == NEXT_TURN_LEFT )
 		{
-			if( ((right_height <= 300 ) && (right_height > 0)) )// || (m_lane_right.m_count <= 0) )
+			if( ((right_up <= 300 ) && (right_up > 0)) )// || (m_lane_right.m_count <= 0) )
 			{
 				m_next_turn = 0;
 				m_wheel->move_forward_turn(10,25);
 				m_run_state = DRV_STATE_TURN_LEFT;
 				m_last_time = s_timer_t::get_inst()->get_ms();
-				s_log_info("top turn left dis:%d...\n", right_height);
+				s_log_info("top turn left dis:%d...\n", right_up);
 			}
 		}
 		else if( m_next_turn == NEXT_TURN_RIGHT )
 		{
-			if( ((left_height <= 300 ) && (left_height > 0)) ) // || (m_lane_left.m_count <= 0) )
+			if( ((left_up <= 300 ) && (left_up > 0)) ) // || (m_lane_left.m_count <= 0) )
 			{
 				m_next_turn = 0;
 				m_wheel->move_forward_turn(25, 10);
 				m_last_time = s_timer_t::get_inst()->get_ms();
 				m_run_state = DRV_STATE_TURN_RIGHT;
-				s_log_info("top turn right dis:%d...\n", left_height);
+				s_log_info("top turn right dis:%d...\n", left_up);
 			}
 		}
 	
@@ -727,7 +732,7 @@ int s_drive_player_t::drive()
 		int64 ms;
 		ms = s_timer_t::get_inst()->get_ms();
 		ms = ms - m_last_time;
-		if( ( ms > 3000) && (m_lane_right.m_count > 0 ) && (abs(m_lane_right.m_avg_alpha) > 50) )
+		if( ( ms > 3000) && m_lane_right.has_lane() && (abs(m_lane_right.m_avg_alpha) > 50) )
 		{
 			m_run_state = DRV_STATE_FWD;
 			m_wheel->move_forward(15);
@@ -741,7 +746,7 @@ int s_drive_player_t::drive()
 		int64 ms;
 		ms = s_timer_t::get_inst()->get_ms();
 		ms = ms - m_last_time;
-		if(  ( ms > 3000) && (m_lane_left.m_count > 0 ) &&  (abs(m_lane_left.m_avg_alpha) > 50) )
+		if(  ( ms > 3000) && m_lane_left.has_lane() &&  (abs(m_lane_left.m_avg_alpha) > 50) )
 		{
 			m_run_state = DRV_STATE_FWD;
 			m_wheel->move_forward(15);
@@ -752,7 +757,7 @@ int s_drive_player_t::drive()
 
 	m_run_state = DRV_STATE_FWD;
 
-	if( (m_lane_right.m_count > 0 ) && (m_lane_left.m_count > 0 ) )
+	if( m_lane_right.has_lane() && m_lane_left.has_lane() )
 	{
 		int d;
 		d = (m_lane_right.m_avg_dis + m_lane_left.m_avg_dis)/2;
@@ -790,8 +795,7 @@ int s_drive_player_t::drive()
 			s_log_info("drive forward\n");
 		}
 	}
-	
-	
+		
 	return 0;
 }
 
@@ -940,11 +944,15 @@ int s_drive_player_t::run()
 	{
 		//	struct timeval current;
 		clock_gettime(CLOCK_REALTIME, &abstime);
-	//	abstime.tv_sec += 1;	// timed out 6 seconds
+		abstime.tv_sec += 1;	// timed out 6 seconds
 		abstime.tv_nsec += 1000*1000*10;
 			
 		LOCK_MUTEX(m_loc_mutex);
 		ret = WAIT_SIGNAL_TIMEOUT(m_loc_signal, m_loc_mutex, abstime);
+		printf("timeout ret:%d\n", ret);
+		if( ret != 0 )
+		{
+		}
 		UNLOCK_MUTEX(m_loc_mutex);
 
 		drive();

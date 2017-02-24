@@ -36,7 +36,7 @@ int s_can_t::init()
 	if( m_socket < 0) 
 	{
 		s_log_info("open CAN socket ERROR %d\n", m_socket);
-		return m_socket;
+		return S_ERROR_CAN_BUS_NOT_EXIST;
 	}
 
 	addr.can_family = PF_CAN;
@@ -47,7 +47,7 @@ int s_can_t::init()
 	if( ret < 0) 
 	{
 		s_log_info("SIOCGIFINDEX ERROR %d\n", ret);
-		return ret;
+		return S_ERROR_CAN_BUS_NOT_EXIST;
 	}
 	addr.can_ifindex = ifr.ifr_ifindex;
 
@@ -62,7 +62,7 @@ int s_can_t::init()
 	if( ret < 0) 
 	{
 		s_log_info("bind ERROR %d\n", ret);
-		return ret;
+		return S_ERROR_CAN_BUS_NOT_EXIST;
 	}
 	return 0;
 }
@@ -208,6 +208,7 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 	int n = 0;
 	int nbytes, i;
 	char buf[BUF_SIZ];
+	int ret;
 	
 	struct can_frame frame = {
 		.can_id = 1,
@@ -217,18 +218,18 @@ int s_can_t::receive(J1939_MESSAGE * msg)
 	
 	if( m_socket < 0 )
 	{
-		init();
-		if( m_socket < 0 )
+		ret = init();
+		if( ret < 0 )
 		{
 			s_log_info("send ERROR can't init socket\n");
-			return -1;
+			return ret;
 		}
 	}
 
 	if ((nbytes = read(m_socket, &frame, sizeof(struct can_frame))) < 0) 
 	{
 		s_log_info("read error %d\n", nbytes);
-		return -1;
+		return S_ERROR_CAN_BUS_NO_DATA;
 	} 
 	else 
 	{

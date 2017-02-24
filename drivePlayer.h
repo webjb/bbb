@@ -74,6 +74,11 @@ struct s_line_group
 
 	int m_type;
 
+    int has_lane()
+    {
+        return (m_count > 0);
+    };
+    
     s_line_group & operator = (s_line_group * x)
     {    
         memcpy(this, x, sizeof(s_line_group));
@@ -108,6 +113,12 @@ public:
 
 private:
 	int parse(char *msg);
+    int no_lane_showed();
+
+    int do_fwd();
+    int do_turn_left();
+    int do_turn_right();
+    
     int m_run_state;
 	int m_exit;
     s_wheel_t * m_wheel;

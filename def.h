@@ -87,5 +87,13 @@ using namespace std;
 #define int64 long long
 #endif
 
+
+enum {
+    S_ERROR_NONE = 0,
+    S_ERROR_CAN_BUS_NOT_EXIST = -1000,
+    S_ERROR_CAN_BUS_NO_DATA  = -1001,
+    
+};
+
 #endif
 

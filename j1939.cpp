@@ -1,6 +1,11 @@
 // bob sang
 
 #include "j1939.h"
+#include "log.h"
+#include "utilities.h"
+
+using namespace s_log;
+using namespace s_utilities;
 
 #define J1939_ADDRESS	0x10
 
@@ -227,14 +232,20 @@ int s_j1939_t::run()
 	while( !m_quit)
 	{
 		ret = m_can->receive(&msg);
-		if( ret != 0 )
+		switch (ret)
 		{
-			usleep(1000*50);
-		}
-		else
-		{
-			parse(&msg);
-			usleep(100);
+			case S_ERROR_CAN_BUS_NOT_EXIST:
+				s_sleep_ms(5000);
+				break;
+			case S_ERROR_CAN_BUS_NO_DATA:
+				s_sleep_ms(50);
+				break;
+			case S_ERROR_NONE:
+				parse(&msg);
+				break;
+			default:
+				s_sleep_ms(50);
+				break;
 		}
 	}
 	m_quit = 2;

@@ -14,7 +14,7 @@
 #define DRV_STATE_TURN_LEFT	3
 #define DRV_STATE_TURN_RIGHT 4
 
-
+#define NEXT_TURN_NONE 0
 #define NEXT_TURN_LEFT	1
 #define NEXT_TURN_RIGHT 2
 

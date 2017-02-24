@@ -5,6 +5,8 @@
 #include "log.h"
 #include <math.h>
 
+#define TIMEOUT_TURNING_MS	3000
+
 using namespace s_utilities;
 using namespace s_log;
 
@@ -478,38 +480,39 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 			continue;
 		}
 
+		// swap top<->bottom
 		if( g->m_point_top.m_x < g->m_point_bot.m_x )
 		{
 			int tmp_x;
 			int tmp_y;
 
-				tmp_x = g->m_point_top.m_x;
-				tmp_y = g->m_point_top.m_y;
+			tmp_x = g->m_point_top.m_x;
+			tmp_y = g->m_point_top.m_y;
 
-				g->m_point_top.m_x = g->m_point_bot.m_x;
-				g->m_point_top.m_y = g->m_point_bot.m_y;
+			g->m_point_top.m_x = g->m_point_bot.m_x;
+			g->m_point_top.m_y = g->m_point_bot.m_y;
 
 			g->m_point_bot.m_x = tmp_x;
 			g->m_point_bot.m_y = tmp_y;
 			
 		}
 
-			if( lane_left.m_count > 0)
-			{
-				dis0 = get_points_distance(g->m_point_top, lane_left.m_point_top);
-				dis1 = get_points_distance(g->m_point_bot, lane_left.m_point_top);
+		if( lane_left.m_count > 0)
+		{
+			dis0 = get_points_distance(g->m_point_top, lane_left.m_point_top);
+			dis1 = get_points_distance(g->m_point_bot, lane_left.m_point_top);
 
-				if( dis0 > dis1 )
-					dis0 = dis1;
-			}
-			
-			if( lane_right.m_count > 0)
-			{
-				dis2 = get_points_distance(g->m_point_top, lane_right.m_point_top);
-				dis3 = get_points_distance(g->m_point_bot, lane_right.m_point_top);
+			if( dis0 > dis1 )
+				dis0 = dis1;
+		}
 
-				if( dis2 > dis3)
-					dis2 = dis3;
+		if( lane_right.m_count > 0)
+		{
+			dis2 = get_points_distance(g->m_point_top, lane_right.m_point_top);
+			dis3 = get_points_distance(g->m_point_bot, lane_right.m_point_top);
+
+			if( dis2 > dis3)
+				dis2 = dis3;
 		}
 		
 		if( (dis0>0) && (dis2>0) )
@@ -624,8 +627,7 @@ int s_drive_player_t::detect_direction(s_line_group * pline_group[])
 		if( lg->m_count > 0 )
 		{
 			s_log_info("T%lld--- %s --- count:%d alpha:%d dis:%d bot:(%d, %d) top:(%d,%d)\n",s_timer_t::get_inst()->get_ms(), sz, lg->m_count, lg->m_avg_alpha, lg->m_avg_dis, lg->m_point_bot.m_x, lg->m_point_bot.m_y, lg->m_point_top.m_x, lg->m_point_top.m_y);
-		}
-		
+		}		
 	}
 
 	return 0;
@@ -639,11 +641,109 @@ int s_drive_player_t::no_lane_showed()
 			&& (m_lane_right_top.m_count <= 0));
 }
 
-int s_drive_player_t::drive()
+int s_drive_player_t::do_fwd()
 {
+	int d1;
+	int d2;
 	int right_up;
 	int left_up;
+	// see one or multiple lanes
+	right_up = -1;
+	left_up = -1;
+
+	if( m_lane_right_top.has_lane() )
+		right_up = m_lane_right_top.m_avg_dis;
 	
+	if( m_lane_left_top.has_lane() )
+		left_up = m_lane_left_top.m_avg_dis;
+	
+	if( m_lane_right.has_lane()  &&  m_lane_right_top.has_lane()  )
+	{
+		d1 = abs(m_lane_right_top.m_point_bot.m_x - m_lane_right.m_point_top.m_x);
+		d2 = abs(m_lane_right_top.m_point_top.m_x - m_lane_right.m_point_top.m_x);
+		if( d1 < d2 )
+		{
+			m_next_turn = NEXT_TURN_RIGHT;
+			s_log_info("next turn right ...\n");
+		}
+		else
+		{
+			m_next_turn = NEXT_TURN_LEFT;
+			s_log_info("next turn left ...\n");
+		}
+	}
+	
+	if( m_lane_left.has_lane() && m_lane_left_top.has_lane() )
+	{
+		d1 = abs(m_lane_left_top.m_point_bot.m_x - m_lane_left.m_point_top.m_x);
+		d2 = abs(m_lane_left_top.m_point_top.m_x - m_lane_left.m_point_top.m_x);
+		if( d1 < d2 )
+		{
+			m_next_turn = NEXT_TURN_RIGHT;
+			s_log_info("next turn right ###\n");
+		}
+		else
+		{
+			m_next_turn = NEXT_TURN_LEFT;
+			s_log_info("next turn left ###\n");
+		}
+	}
+	
+	if( m_next_turn == NEXT_TURN_LEFT )
+	{
+		if( ((right_up <= 300 ) && (right_up > 0)) )// || (m_lane_right.m_count <= 0) )
+		{
+			m_next_turn = NEXT_TURN_NONE;
+			m_wheel->move_forward_turn(10,25);
+			m_run_state = DRV_STATE_TURN_LEFT;
+			m_last_time = s_timer_t::get_inst()->get_ms();
+			s_log_info("top turn left dis:%d...\n", right_up);
+		}
+	}
+	else if( m_next_turn == NEXT_TURN_RIGHT )
+	{
+		if( ((left_up <= 300 ) && (left_up > 0)) ) // || (m_lane_left.m_count <= 0) )
+		{
+			m_next_turn = NEXT_TURN_NONE;
+			m_wheel->move_forward_turn(25, 10);
+			m_last_time = s_timer_t::get_inst()->get_ms();
+			m_run_state = DRV_STATE_TURN_RIGHT;
+			s_log_info("top turn right dis:%d...\n", left_up);
+		}
+	}
+	return 0;
+}
+
+int s_drive_player_t::do_turn_left()
+{
+	int64 ms;
+	ms = s_timer_t::get_inst()->get_ms();
+	ms = ms - m_last_time;
+	if( ( ms > TIMEOUT_TURNING_MS) && m_lane_right.has_lane() && (abs(m_lane_right.m_avg_alpha) > 50) )
+	{
+		m_run_state = DRV_STATE_FWD;
+		m_wheel->move_forward(15);
+		s_log_info("turn left ---> forward\n");
+	}
+	return 0;
+}
+
+int s_drive_player_t::do_turn_right()
+{
+	int64 ms;
+	ms = s_timer_t::get_inst()->get_ms();
+	ms = ms - m_last_time;
+	if(  ( ms > TIMEOUT_TURNING_MS) && m_lane_left.has_lane() && (abs(m_lane_left.m_avg_alpha) > 50) )
+	{
+		m_run_state = DRV_STATE_FWD;
+		m_wheel->move_forward(15);
+		s_log_info("turn right ---> forward\n");
+	}
+	return 0;
+}
+
+int s_drive_player_t::drive()
+{	
  	if( no_lane_showed() )
 	{
 		m_wheel->move_stop();
@@ -655,104 +755,15 @@ int s_drive_player_t::drive()
 		return 0;
 	}
 
-	// see one or multiple lanes
-	right_up = -1;
-	left_up = -1;
-
-	if( m_lane_right_top.has_lane() )
-		right_up = m_lane_right_top.m_avg_dis;
-	
-	if( m_lane_left_top.has_lane() )
-		left_up = m_lane_left_top.m_avg_dis;
-	
-	if( m_run_state == DRV_STATE_FWD)
+	switch (m_run_state )
 	{
-		int d1;
-		int d2;
-		if( m_lane_right.has_lane()  &&  m_lane_right_top.has_lane()  )
-		{
-			d1 = abs(m_lane_right_top.m_point_bot.m_x - m_lane_right.m_point_top.m_x);
-			d2 = abs(m_lane_right_top.m_point_top.m_x - m_lane_right.m_point_top.m_x);
-			if( d1 < d2 )
-			{
-				m_next_turn = NEXT_TURN_RIGHT;
-				s_log_info("next turn right ...\n");
-			}
-			else
-			{
-				m_next_turn = NEXT_TURN_LEFT;
-				s_log_info("next turn left ...\n");
-			}
-		}
-
-		if( m_lane_left.has_lane() && m_lane_left_top.has_lane() )
-		{
-			d1 = abs(m_lane_left_top.m_point_bot.m_x - m_lane_left.m_point_top.m_x);
-			d2 = abs(m_lane_left_top.m_point_top.m_x - m_lane_left.m_point_top.m_x);
-			if( d1 < d2 )
-			{
-				m_next_turn = NEXT_TURN_RIGHT;
-				s_log_info("next turn right ###\n");
-			}
-			else
-			{
-				m_next_turn = NEXT_TURN_LEFT;
-				s_log_info("next turn left ###\n");
-			}
-		}
-
-		if( m_next_turn == NEXT_TURN_LEFT )
-		{
-			if( ((right_up <= 300 ) && (right_up > 0)) )// || (m_lane_right.m_count <= 0) )
-			{
-				m_next_turn = 0;
-				m_wheel->move_forward_turn(10,25);
-				m_run_state = DRV_STATE_TURN_LEFT;
-				m_last_time = s_timer_t::get_inst()->get_ms();
-				s_log_info("top turn left dis:%d...\n", right_up);
-			}
-		}
-		else if( m_next_turn == NEXT_TURN_RIGHT )
-		{
-			if( ((left_up <= 300 ) && (left_up > 0)) ) // || (m_lane_left.m_count <= 0) )
-			{
-				m_next_turn = 0;
-				m_wheel->move_forward_turn(25, 10);
-				m_last_time = s_timer_t::get_inst()->get_ms();
-				m_run_state = DRV_STATE_TURN_RIGHT;
-				s_log_info("top turn right dis:%d...\n", left_up);
-			}
-		}
-	
-	}
-
-	
-	if( m_run_state == DRV_STATE_TURN_LEFT )
-	{
-		int64 ms;
-		ms = s_timer_t::get_inst()->get_ms();
-		ms = ms - m_last_time;
-		if( ( ms > 3000) && m_lane_right.has_lane() && (abs(m_lane_right.m_avg_alpha) > 50) )
-		{
-			m_run_state = DRV_STATE_FWD;
-			m_wheel->move_forward(15);
-			s_log_info("turn left ---> forward\n");
-		}
-		return 0;
-	}
-
-	if( m_run_state == DRV_STATE_TURN_RIGHT )
-	{
-		int64 ms;
-		ms = s_timer_t::get_inst()->get_ms();
-		ms = ms - m_last_time;
-		if(  ( ms > 3000) && m_lane_left.has_lane() &&  (abs(m_lane_left.m_avg_alpha) > 50) )
-		{
-			m_run_state = DRV_STATE_FWD;
-			m_wheel->move_forward(15);
-			s_log_info("turn right ---> forward\n");
-		}
-		return 0;
+		case DRV_STATE_FWD:
+			do_fwd();
+			break;
+		case DRV_STATE_TURN_LEFT:
+			return do_turn_left();
+		case DRV_STATE_TURN_RIGHT:
+			return do_turn_right();
 	}
 
 	m_run_state = DRV_STATE_FWD;
@@ -795,7 +806,7 @@ int s_drive_player_t::drive()
 			s_log_info("drive forward\n");
 		}
 	}
-		
+	
 	return 0;
 }
 
